@@ -1,0 +1,56 @@
+# Places
+
+A SafeGraph-inspired Places explorer for live OpenStreetMap data. Filter by industry/category, brand, and geography; browse results on a map and in a table. Overpass QL stays behind the scenes.
+
+## Requirements
+
+- Node.js `>=22`
+- [pnpm](https://pnpm.io/) `11.8.0` (pinned via `packageManager` in `package.json`)
+
+```bash
+corepack enable
+pnpm install
+```
+
+Copy [`apps/web/.env.example`](apps/web/.env.example) to `apps/web/.env` and set a Mapbox access token:
+
+```bash
+cp apps/web/.env.example apps/web/.env
+# edit VITE_MAPBOX_GL_JS_PUBLIC=
+```
+
+## Develop
+
+```bash
+pnpm dev
+```
+
+Opens the Places app at [http://localhost:5173](http://localhost:5173).
+
+## Build
+
+```bash
+pnpm build
+pnpm preview
+```
+
+## Scripts
+
+| Script | Description |
+| --- | --- |
+| `pnpm dev` | Start the Places Vite dev server |
+| `pnpm build` | Typecheck and build `apps/web` |
+| `pnpm check` | Run Biome check (format + lint) |
+| `pnpm doctor` | Run React Doctor |
+
+## Data sources
+
+- Places search: [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API)
+- Jump-to-location / admin areas: [Nominatim](https://nominatim.org/)
+- Map: [Mapbox GL JS](https://docs.mapbox.com/mapbox-gl-js/) (light style)
+
+Place data © OpenStreetMap contributors (ODbL). Map display © Mapbox / OpenStreetMap.
+
+## License
+
+MIT — see [LICENSE](./LICENSE).

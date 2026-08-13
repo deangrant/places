@@ -1,0 +1,25 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: sunday
+    cooldown:
+      default-days: 21
+    labels:
+      - dependabot
+      - ecosystem:github-actions
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: sunday
+    cooldown:
+      default-days: 21
+    labels:
+      - dependabot
+      - ecosystem:npm
+    open-pull-requests-limit: 25

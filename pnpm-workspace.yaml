@@ -1,0 +1,65 @@
+# Workspace package locations; globs matching directories that contain a
+# package.json.
+packages:
+  - "apps/*"
+
+# Shared dependency versions referenced by packages via `catalog:`.
+catalog:
+  "@biomejs/biome": 2.5.5
+  "@types/geojson": 7946.0.16
+  "@types/react": 19.2.17
+  "@types/react-dom": 19.2.3
+  "@vitejs/plugin-react": 6.0.4
+  mapbox-gl: 3.27.0
+  react: 19.2.8
+  react-dom: 19.2.8
+  react-doctor: 0.9.1
+  typescript: 7.0.2
+  ultracite: 7.9.4
+  vite: 8.1.5
+
+# Dependency install/build scripts run only when listed here. true = allow,
+# false = deny; unlisted packages fail install (strictDepBuilds).
+allowBuilds:
+  esbuild: true
+
+# Fail install when the current Node/pnpm version is outside package.json
+# engines. Documents intent; without this, engines is advisory only.
+engineStrict: true
+
+# Fail install when a dependency has build scripts not listed in allowBuilds.
+# pnpm 11 default is true; set explicitly so intent survives default changes.
+strictDepBuilds: true
+
+# Enforces exact dependency versioning across all workspace packages.
+saveExact: true
+
+# 21 days, expressed in minutes (21 × 24 × 60); pnpm requires minutes for this
+# setting.
+minimumReleaseAge: 30240
+
+# Exclude packages from the minimum release age policy.
+minimumReleaseAgeExclude:
+  - brace-expansion@5.0.9 # CVE-2026-69152, fixed in 5.0.9 (2026-07-30T10:00:32.762Z).
+  - fast-uri@3.1.5 # CVE-2026-18446, fixed in 3.1.5 (2026-07-31T09:16:56.212Z).
+  - nanoid@3.3.18 # CVE-2026-67213, fixed in 3.3.18 (2026-08-07T16:41:05.696Z).
+  - postcss@8.5.23 # CVE-2026-69153, fixed in 8.5.23 (2026-07-24T17:05:13.876Z).
+
+# Block transitive deps from exotic sources (git/URL); only registry, workspace,
+# or local. pnpm 11 default is true; set explicitly so intent survives default
+# changes.
+blockExoticSubdeps: true
+
+# Force-replace transitive versions across the dependency graph to avoid
+# supply-chain downgrades.
+overrides:
+
+# Block installs when a version has weaker trust evidence than an
+# earlier-published release (trusted publisher > provenance > none); mitigates
+# supply-chain downgrades.
+trustPolicy: no-downgrade
+
+# Exclude packages from the trust policy check. Use only after verifying the
+# version is safe (e.g. missing provenance is accidental, not a takeover).
+trustPolicyExclude:
+  - semver@6.3.1 # Required by react-doctor@0.7.2 as a direct dependency.

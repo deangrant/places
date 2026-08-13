@@ -1,0 +1,133 @@
+:root {
+  --color-bg: #0f1a17;
+  --color-bg-elevated: #162420;
+  --color-bg-panel: #1a2c27;
+  --color-border: #2a4038;
+  --color-border-strong: #3d5a4e;
+  --color-text: #e8f0ec;
+  --color-text-muted: #9bb0a6;
+  --color-accent: #3d9b7a;
+  --color-accent-strong: #2f7d62;
+  --color-accent-soft: rgba(61, 155, 122, 0.18);
+  --color-danger: #d9786a;
+  --color-marker: #3d9b7a;
+  --color-marker-selected: #2f7d62;
+  --font-sans: "Sora", "Avenir Next", "Segoe UI", sans-serif;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --shadow-panel: 0 12px 40px rgba(0, 0, 0, 0.35);
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  color-scheme: dark;
+}
+
+@font-face {
+  font-family: "Sora";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("https://cdn.jsdelivr.net/fontsource/fonts/sora@latest/latin-400-normal.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "Sora";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("https://cdn.jsdelivr.net/fontsource/fonts/sora@latest/latin-600-normal.woff2")
+    format("woff2");
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  line-height: 1.45;
+  color: var(--color-text);
+  background:
+    radial-gradient(
+      1200px 600px at 10% -10%,
+      rgba(61, 155, 122, 0.18),
+      transparent 55%
+    ),
+    radial-gradient(
+      900px 500px at 90% 0%,
+      rgba(240, 195, 90, 0.08),
+      transparent 50%
+    ),
+    var(--color-bg);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--color-accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Mapbox attribution — kept global so CSS modules need no :global() */
+.mapboxgl-ctrl-attrib {
+  padding: 0.2rem 0.45rem;
+  margin: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: var(--color-text-muted);
+  background: rgba(15, 26, 23, 0.82);
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
+
+.mapboxgl-ctrl-attrib a {
+  color: var(--color-text-muted);
+}
+
+.mapboxgl-ctrl-attrib a:hover {
+  color: var(--color-text);
+}
+
+.mapboxgl-ctrl-attrib-inner {
+  font-family: var(--font-sans);
+  color: var(--color-text-muted);
+}
+
+.mapboxgl-ctrl-attrib-button {
+  background-color: var(--color-bg-elevated);
+  background-image: none;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+  opacity: 1;
+}
+
+.mapboxgl-ctrl-attrib-button:hover,
+.mapboxgl-ctrl-attrib-button:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+  background-color: var(--color-bg-panel);
+}

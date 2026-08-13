@@ -1,0 +1,11 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  letter-spacing: 0.02em;
+  background: var(--color-accent-soft);
+  border-radius: 999px;
+}
