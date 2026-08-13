@@ -1,0 +1,31 @@
+{
+  "author": "Dean Grant",
+  "description": "",
+  "devDependencies": {
+    "@biomejs/biome": "2.5.3",
+    "react-doctor": "0.7.6"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": [],
+  "license": "MIT",
+  "name": "pnpm-workspace",
+  "packageManager": "pnpm@11.8.0",
+  "private": true,
+  "scripts": {
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
+    "doctor": "react-doctor",
+    "doctor:changed": "react-doctor --verbose --scope changed --yes",
+    "doctor:full": "react-doctor --verbose --yes",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "format:fix": "biome format --write .",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
+    "lint:lockfile": "pnpm install --frozen-lockfile"
+  },
+  "type": "module",
+  "version": "1.0.0"
+}

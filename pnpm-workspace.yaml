@@ -1,0 +1,49 @@
+# Workspace package locations; globs matching directories that contain a
+# package.json.
+packages:
+
+# Shared dependency versions referenced by packages via `catalog:`.
+catalog:
+
+# Dependency install/build scripts run only when listed here. true = allow,
+# false = deny; unlisted packages fail install (strictDepBuilds).
+allowBuilds:
+
+# Fail install when the current Node/pnpm version is outside package.json
+# engines. Documents intent; without this, engines is advisory only.
+engineStrict: true
+
+# Fail install when a dependency has build scripts not listed in allowBuilds.
+# pnpm 11 default is true; set explicitly so intent survives default changes.
+strictDepBuilds: true
+
+# Enforces exact dependency versioning across all workspace packages.
+saveExact: true
+
+# 21 days, expressed in minutes (21 × 24 × 60); pnpm requires minutes for this
+# setting.
+minimumReleaseAge: 30240
+
+# Exclude packages from the minimum release age policy.
+minimumReleaseAgeExclude:
+  - brace-expansion@5.0.8 # CVE-2026-14257, fixed in 5.0.8 (2026-07-23T11:39:25.744Z).
+  - fast-uri@3.1.4 # CVE-2026-16221, fixed in 3.1.4 (2026-07-19T07:42:54.497Z).
+
+# Block transitive deps from exotic sources (git/URL); only registry, workspace,
+# or local. pnpm 11 default is true; set explicitly so intent survives default
+# changes.
+blockExoticSubdeps: true
+
+# Force-replace transitive versions across the dependency graph to avoid
+# supply-chain downgrades.
+overrides:
+
+# Block installs when a version has weaker trust evidence than an
+# earlier-published release (trusted publisher > provenance > none); mitigates
+# supply-chain downgrades.
+trustPolicy: no-downgrade
+
+# Exclude packages from the trust policy check. Use only after verifying the
+# version is safe (e.g. missing provenance is accidental, not a takeover).
+trustPolicyExclude:
+  - semver@6.3.1 # Required by react-doctor@0.7.2 as a direct dependency.
