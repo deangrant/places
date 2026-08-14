@@ -47,6 +47,28 @@
   border-radius: var(--radius-sm);
 }
 
+.attribution {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--color-text-muted);
+}
+
+.attribution a {
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.attribution a:hover {
+  color: var(--color-text);
+}
+
+.attributionSources {
+  color: var(--color-text-muted);
+  opacity: 0.85;
+}
+
 @media (max-width: 960px) {
   .grid {
     flex-wrap: wrap;

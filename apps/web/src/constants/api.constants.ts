@@ -25,3 +25,6 @@ export const DEFAULT_MAP_VIEW = {
 
 /** Fixed Mapbox light style (no style picker / dark variant). */
 export const MAPBOX_STYLE_URL = "mapbox://styles/mapbox/light-v11";
+
+/** OpenStreetMap copyright / attribution page (ODbL credit). */
+export const OSM_COPYRIGHT_URL = "https://www.openstreetmap.org/copyright";
