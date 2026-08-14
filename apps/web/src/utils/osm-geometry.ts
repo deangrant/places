@@ -155,12 +155,15 @@ function fromRelation(element: OsmElement): NormalizedOsmGeometry | null {
 
   if (outers.length > 1) {
     // Assign each inner to the first outer that contains its centroid.
-    const polygons: LonLat[][][] = outers.map((outer) => {
-      const holes = inners.filter((inner) =>
-        pointInRing(ringCentroid(inner), outer),
+    const polygons: LonLat[][][] = outers.map((outer) => [outer]);
+    for (const inner of inners) {
+      const owner = polygons.find((polygon) =>
+        pointInRing(ringCentroid(inner), polygon[0]),
       );
-      return [outer, ...holes];
-    });
+      if (owner) {
+        owner.push(inner);
+      }
+    }
     return {
       centroid: ringCentroid(outers[0]),
       geometry: { polygons },
