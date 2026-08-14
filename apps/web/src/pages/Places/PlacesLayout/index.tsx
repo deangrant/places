@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Spinner } from "@/components/core/Spinner";
 import { OVERPASS_TIMEOUT_SECONDS } from "@/constants/api.constants";
 import { usePlaces } from "@/contexts/PlacesContext";
@@ -6,6 +6,7 @@ import { MapView } from "@/pages/Places/components/MapView";
 import { PlaceDetail } from "@/pages/Places/components/PlaceDetail";
 import { ResultsList } from "@/pages/Places/components/ResultsList";
 import { SearchFilters } from "@/pages/Places/components/SearchFilters";
+import { filterPlacesByAddress } from "@/utils/filter-places-by-address";
 import styles from "./index.module.css";
 
 /** Page skeleton: filters, full-bleed map, and progressive side panel. */
@@ -24,9 +25,22 @@ export function PlacesLayout() {
   } = usePlaces();
 
   const showPanel = places.length > 0;
+  const [addressQuery, setAddressQuery] = useState("");
+  const deferredAddressQuery = useDeferredValue(addressQuery);
+  const filteredPlaces = useMemo(
+    () => filterPlacesByAddress(places, deferredAddressQuery),
+    [places, deferredAddressQuery],
+  );
+
   const [remainingSeconds, setRemainingSeconds] = useState(
     OVERPASS_TIMEOUT_SECONDS,
   );
+
+  useEffect(() => {
+    if (loading) {
+      setAddressQuery("");
+    }
+  }, [loading]);
 
   useEffect(() => {
     if (!loading) {
@@ -64,7 +78,7 @@ export function PlacesLayout() {
             onFitResults={fitResultsBounds}
             onSelectPlace={selectPlace}
             onViewChange={setMapView}
-            places={places}
+            places={filteredPlaces}
             selectedPlaceId={selectedPlaceId}
             view={mapView}
           />
@@ -75,7 +89,16 @@ export function PlacesLayout() {
             aria-label={selectedPlace ? "Place detail" : "Search results"}
             className={styles.sidePanel}
           >
-            {selectedPlace ? <PlaceDetail /> : <ResultsList />}
+            {selectedPlace ? (
+              <PlaceDetail />
+            ) : (
+              <ResultsList
+                onQueryChange={setAddressQuery}
+                places={filteredPlaces}
+                query={addressQuery}
+                totalCount={places.length}
+              />
+            )}
           </aside>
         ) : null}
       </div>

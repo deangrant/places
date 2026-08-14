@@ -12,6 +12,8 @@ export interface InputProps {
   "aria-controls"?: string;
   /** Whether an associated popup (e.g. listbox) is expanded. */
   "aria-expanded"?: boolean;
+  /** Accessible name when no visible label is present. */
+  "aria-label"?: string;
   /** Browser autocomplete hint. */
   autoComplete?: string;
   /** Disables editing. */

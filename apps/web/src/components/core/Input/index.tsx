@@ -14,6 +14,7 @@ export function Input({
   autoComplete,
   list,
   role,
+  "aria-label": ariaLabel,
   "aria-expanded": ariaExpanded,
   "aria-controls": ariaControls,
   "aria-autocomplete": ariaAutocomplete,
@@ -32,6 +33,7 @@ export function Input({
       aria-autocomplete={ariaAutocomplete}
       aria-controls={ariaControls}
       aria-expanded={ariaExpanded}
+      aria-label={ariaLabel}
       autoComplete={autoComplete}
       className={styles.root}
       disabled={disabled}

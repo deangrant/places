@@ -1,21 +1,28 @@
 import { useCallback } from "react";
+import { Button } from "@/components/core/Button";
+import { Input } from "@/components/core/Input";
 import { usePlaces } from "@/contexts/PlacesContext";
 import styles from "./index.module.css";
-import type { ResultRowProps } from "./index.types";
+import type { ResultRowProps, ResultsListProps } from "./index.types";
 
-/** Compact Places results list with row selection. */
-export function ResultsList() {
-  const { places, selectedPlaceId, selectPlace, truncated } = usePlaces();
+/** Compact Places results list with row selection and address filter. */
+export function ResultsList({
+  places,
+  totalCount,
+  query,
+  onQueryChange,
+}: ResultsListProps) {
+  const { selectedPlaceId, selectPlace, truncated } = usePlaces();
 
-  if (places.length === 0) {
-    return (
-      <div className={styles.empty}>
-        No places yet. Choose filters and run a search.
-      </div>
-    );
+  const handleClear = useCallback(() => {
+    onQueryChange("");
+  }, [onQueryChange]);
+
+  const isFiltering = query.trim().length > 0;
+  let title = totalCount === 1 ? "1 place" : `${totalCount} places`;
+  if (isFiltering) {
+    title = `${places.length} of ${totalCount} places`;
   }
-
-  const title = places.length === 1 ? "1 place" : `${places.length} places`;
 
   return (
     <div className={styles.root}>
@@ -24,18 +31,47 @@ export function ResultsList() {
         {truncated ? (
           <p className={styles.hint}>Result limit reached — refine filters.</p>
         ) : null}
+        <div className={styles.filterRow}>
+          <Input
+            aria-label="Filter results by address"
+            id="results-address-filter"
+            onChange={onQueryChange}
+            placeholder="Filter by address…"
+            type="search"
+            value={query}
+          />
+          {isFiltering ? (
+            <Button
+              className={styles.clear}
+              onClick={handleClear}
+              title="Clear address filter"
+              type="button"
+              variant="ghost"
+            >
+              Clear
+            </Button>
+          ) : null}
+        </div>
       </header>
 
-      <ul className={styles.list}>
-        {places.map((place) => (
-          <ResultRow
-            key={place.id}
-            onSelect={selectPlace}
-            place={place}
-            selected={place.id === selectedPlaceId}
-          />
-        ))}
-      </ul>
+      {places.length === 0 ? (
+        <div className={styles.empty}>
+          {isFiltering
+            ? "No places match this address"
+            : "No places yet. Choose filters and run a search."}
+        </div>
+      ) : (
+        <ul className={styles.list}>
+          {places.map((place) => (
+            <ResultRow
+              key={place.id}
+              onSelect={selectPlace}
+              place={place}
+              selected={place.id === selectedPlaceId}
+            />
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
