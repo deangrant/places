@@ -1,7 +1,10 @@
 import { RESULT_LIMIT } from "@/constants/api.constants";
 import { isAllowedOsmTagKey } from "@/constants/osm-tags.constants";
 import type { IAreaResolver } from "@/services/geocoding/nominatim-area-resolver";
-import type { IOverpassClient } from "@/services/overpass/overpass-http-client";
+import type {
+  IOverpassClient,
+  OverpassAttemptListener,
+} from "@/services/overpass/overpass-http-client";
 import { describeOverpassRemark } from "@/services/overpass/overpass-http-client";
 import type { IOsmPlaceNormalizer } from "@/services/places/osm-place-normalizer";
 import type { IPlaceQueryBuilder } from "@/services/places/place-query-builder";
@@ -43,11 +46,13 @@ export interface IPlaceSearchService {
    * @param criteria Active search filters.
    * @param geometryType Effective export geometry type.
    * @param signal Optional abort signal.
+   * @param onAttempt Optional Overpass endpoint progress callback.
    */
   exportByGeometry: (
     criteria: PlaceSearchCriteria,
     geometryType: PlaceGeometryType,
     signal?: AbortSignal,
+    onAttempt?: OverpassAttemptListener,
   ) => Promise<Place[]>;
   /**
    * Fetches full `out geom` for a single OSM way or relation.
@@ -64,10 +69,12 @@ export interface IPlaceSearchService {
    * Runs a Places search for the given criteria.
    * @param criteria User filters.
    * @param signal Optional abort signal.
+   * @param onAttempt Optional Overpass endpoint progress callback.
    */
   search: (
     criteria: PlaceSearchCriteria,
     signal?: AbortSignal,
+    onAttempt?: OverpassAttemptListener,
   ) => Promise<PlaceSearchResult>;
 }
 
@@ -102,12 +109,13 @@ export class PlaceSearchService implements IPlaceSearchService {
   async search(
     criteria: PlaceSearchCriteria,
     signal?: AbortSignal,
+    onAttempt?: OverpassAttemptListener,
   ): Promise<PlaceSearchResult> {
     this.assertHasFilters(criteria);
 
     const scope = await this.resolveScope(criteria, signal);
     const query = this.queryBuilder.build(criteria, scope, "center");
-    const response = await this.overpass.query(query, signal);
+    const response = await this.overpass.query(query, signal, onAttempt);
 
     const remark = describeOverpassRemark(response.remark);
     if (remark) {
@@ -132,13 +140,14 @@ export class PlaceSearchService implements IPlaceSearchService {
     criteria: PlaceSearchCriteria,
     geometryType: PlaceGeometryType,
     signal?: AbortSignal,
+    onAttempt?: OverpassAttemptListener,
   ): Promise<Place[]> {
     this.assertHasFilters(criteria);
 
     const scope = await this.resolveScope(criteria, signal);
     const outputMode = geometryType === "POINT" ? "center" : "geom";
     const query = this.queryBuilder.build(criteria, scope, outputMode);
-    const response = await this.overpass.query(query, signal);
+    const response = await this.overpass.query(query, signal, onAttempt);
 
     const remark = describeOverpassRemark(response.remark);
     if (remark) {

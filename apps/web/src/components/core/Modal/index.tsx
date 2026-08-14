@@ -1,5 +1,5 @@
 import type { SyntheticEvent } from "react";
-import { useEffect, useId, useRef } from "react";
+import { useCallback, useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import styles from "./index.module.css";
 import type { ModalProps } from "./index.types";
@@ -54,13 +54,16 @@ export function Modal({
     previouslyFocused?.focus();
   }, [open]);
 
-  const handleCancel = (event: SyntheticEvent<HTMLDialogElement>) => {
-    // Keep dismiss controlled by props / parent state.
-    event.preventDefault();
-    if (closeOnEscape) {
-      onClose();
-    }
-  };
+  const handleCancel = useCallback(
+    (event: SyntheticEvent<HTMLDialogElement>) => {
+      // Keep dismiss controlled by props / parent state.
+      event.preventDefault();
+      if (closeOnEscape) {
+        onClose();
+      }
+    },
+    [closeOnEscape, onClose],
+  );
 
   return createPortal(
     <dialog

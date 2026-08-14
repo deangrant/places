@@ -1,8 +1,32 @@
 import {
-  OVERPASS_ENDPOINT,
+  OVERPASS_ENDPOINTS,
   OVERPASS_TIMEOUT_SECONDS,
 } from "@/constants/api.constants";
 import type { OverpassResponse } from "@/types/places.types";
+
+/** Lifecycle status for one interpreter attempt during a query. */
+export type OverpassAttemptStatus =
+  | "started"
+  | "succeeded"
+  | "failed"
+  | "timed_out";
+
+/**
+ * Progress event emitted while trying Overpass interpreters.
+ */
+export interface OverpassAttemptEvent {
+  /** Full interpreter URL for this attempt. */
+  endpoint: string;
+  /** Hostname shown in loaders (e.g. overpass.private.coffee). */
+  hostname: string;
+  /** Zero-based index in this query’s shuffled attempt order. */
+  index: number;
+  /** Outcome or start of the attempt. */
+  status: OverpassAttemptStatus;
+}
+
+/** Optional callback for live per-endpoint query status. */
+export type OverpassAttemptListener = (event: OverpassAttemptEvent) => void;
 
 /**
  * Low-level Overpass interpreter client.
@@ -12,8 +36,13 @@ export interface IOverpassClient {
    * Executes an Overpass QL query and returns the JSON response.
    * @param query Complete Overpass QL script.
    * @param signal Optional abort signal for cancellation.
+   * @param onAttempt Optional per-endpoint progress callback.
    */
-  query: (query: string, signal?: AbortSignal) => Promise<OverpassResponse>;
+  query: (
+    query: string,
+    signal?: AbortSignal,
+    onAttempt?: OverpassAttemptListener,
+  ) => Promise<OverpassResponse>;
 }
 
 /**
@@ -21,45 +50,177 @@ export interface IOverpassClient {
  */
 export class OverpassError extends Error {
   readonly status?: number;
+  readonly timedOut: boolean;
 
   /**
    * @param message Human-readable error summary.
-   * @param options Optional status and Error cause.
+   * @param options Optional status, timeout flag, and Error cause.
    */
-  constructor(message: string, options?: ErrorOptions & { status?: number }) {
+  constructor(
+    message: string,
+    options?: ErrorOptions & { status?: number; timedOut?: boolean },
+  ) {
     super(message, options);
     this.name = "OverpassError";
     this.status = options?.status;
+    this.timedOut = options?.timedOut === true;
   }
 }
 
 /**
- * HTTP Overpass client using the public interpreter endpoint.
+ * HTTP Overpass client with randomized sequential failover across interpreters.
  */
 export class OverpassHttpClient implements IOverpassClient {
-  private readonly endpoint: string;
+  private readonly endpoints: readonly string[];
   private readonly timeoutMs: number;
+  private readonly shuffle: (endpoints: readonly string[]) => string[];
 
   /**
-   * @param endpoint Overpass interpreter URL.
-   * @param timeoutMs Client-side abort budget in milliseconds.
+   * @param endpoints Interpreter URLs (shuffled per query unless overridden).
+   * @param timeoutMs Client-side abort budget in milliseconds per attempt.
+   * @param shuffle Endpoint orderer; defaults to Fisher–Yates shuffle.
    */
   constructor(
-    endpoint: string = OVERPASS_ENDPOINT,
+    endpoints: readonly string[] = OVERPASS_ENDPOINTS,
     timeoutMs: number = OVERPASS_TIMEOUT_SECONDS * 1000,
+    shuffle: (endpoints: readonly string[]) => string[] = shuffleEndpoints,
   ) {
-    this.endpoint = endpoint;
+    this.endpoints = endpoints;
     this.timeoutMs = timeoutMs;
+    this.shuffle = shuffle;
   }
 
   /** @inheritdoc */
-  async query(query: string, signal?: AbortSignal): Promise<OverpassResponse> {
+  query(
+    query: string,
+    signal?: AbortSignal,
+    onAttempt?: OverpassAttemptListener,
+  ): Promise<OverpassResponse> {
+    const order = this.shuffle(this.endpoints);
+    return this.queryInOrder(order, 0, query, signal, onAttempt);
+  }
+
+  /**
+   * Tries interpreters sequentially from `index` without awaiting inside a loop.
+   * @param order Shuffled endpoint URLs for this query.
+   * @param index Current attempt index.
+   * @param query Overpass QL script.
+   * @param signal Optional caller abort signal.
+   * @param onAttempt Optional progress callback.
+   * @param lastError Last retryable failure from a prior attempt.
+   */
+  private async queryInOrder(
+    order: readonly string[],
+    index: number,
+    query: string,
+    signal: AbortSignal | undefined,
+    onAttempt: OverpassAttemptListener | undefined,
+    lastError?: OverpassError,
+  ): Promise<OverpassResponse> {
+    if (index >= order.length) {
+      throw (
+        lastError ??
+        new OverpassError("Could not reach the Overpass API. Try again.")
+      );
+    }
+
+    const endpoint = order[index];
+    const hostname = hostnameFromEndpoint(endpoint);
+    onAttempt?.({ endpoint, hostname, index, status: "started" });
+
+    const outcome = await this.attemptEndpoint(
+      endpoint,
+      hostname,
+      index,
+      query,
+      signal,
+      onAttempt,
+    );
+
+    if (outcome.kind === "success") {
+      return outcome.response;
+    }
+    if (outcome.kind === "fatal") {
+      throw outcome.error;
+    }
+
+    return this.queryInOrder(
+      order,
+      index + 1,
+      query,
+      signal,
+      onAttempt,
+      outcome.error,
+    );
+  }
+
+  /**
+   * Runs one interpreter attempt and classifies the outcome for failover.
+   * @param endpoint Interpreter URL.
+   * @param hostname Display hostname for progress events.
+   * @param index Attempt index in this query’s order.
+   * @param query Overpass QL script.
+   * @param signal Optional caller abort signal.
+   * @param onAttempt Optional progress callback.
+   */
+  private async attemptEndpoint(
+    endpoint: string,
+    hostname: string,
+    index: number,
+    query: string,
+    signal: AbortSignal | undefined,
+    onAttempt: OverpassAttemptListener | undefined,
+  ): Promise<OverpassAttemptOutcome> {
+    try {
+      const response = await this.queryEndpoint(endpoint, query, signal);
+      onAttempt?.({ endpoint, hostname, index, status: "succeeded" });
+      return { kind: "success", response };
+    } catch (error) {
+      if (signal?.aborted) {
+        return { error, kind: "fatal" };
+      }
+
+      if (error instanceof OverpassError && error.timedOut) {
+        onAttempt?.({ endpoint, hostname, index, status: "timed_out" });
+        return { error, kind: "fatal" };
+      }
+
+      if (!isRetryableOverpassFailure(error)) {
+        if (error instanceof OverpassError) {
+          onAttempt?.({ endpoint, hostname, index, status: "failed" });
+        }
+        return { error, kind: "fatal" };
+      }
+
+      onAttempt?.({ endpoint, hostname, index, status: "failed" });
+      const retryError =
+        error instanceof OverpassError
+          ? error
+          : new OverpassError(
+              "Could not reach the Overpass API. Check your network and try again.",
+              { cause: error },
+            );
+      return { error: retryError, kind: "retry" };
+    }
+  }
+
+  /**
+   * POSTs one interpreter and parses the Overpass JSON body.
+   * @param endpoint Interpreter URL.
+   * @param query Overpass QL script.
+   * @param signal Optional caller abort signal.
+   */
+  private async queryEndpoint(
+    endpoint: string,
+    query: string,
+    signal?: AbortSignal,
+  ): Promise<OverpassResponse> {
     const body = new URLSearchParams({ data: query });
     const timeout = createTimeoutSignal(this.timeoutMs);
     const combined = combineAbortSignals(signal, timeout.signal);
     let response: Response;
     try {
-      response = await fetch(this.endpoint, {
+      response = await fetch(endpoint, {
         body,
         headers: {
           "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
@@ -72,7 +233,10 @@ export class OverpassHttpClient implements IOverpassClient {
         throw error;
       }
       if (timeout.signal.aborted) {
-        throw new OverpassError(overpassTimeoutMessage(), { cause: error });
+        throw new OverpassError(overpassTimeoutMessage(), {
+          cause: error,
+          timedOut: true,
+        });
       }
       throw new OverpassError(
         "Could not reach the Overpass API. Check your network and try again.",
@@ -112,6 +276,76 @@ export class OverpassHttpClient implements IOverpassClient {
 
     return parsed;
   }
+}
+
+/** Classified result of a single interpreter attempt. */
+type OverpassAttemptOutcome =
+  | { kind: "success"; response: OverpassResponse }
+  | { kind: "retry"; error: OverpassError }
+  | { kind: "fatal"; error: unknown };
+
+/**
+ * True when the failure should advance to the next interpreter.
+ * @param error Thrown value from a single endpoint attempt.
+ */
+export function isRetryableOverpassFailure(error: unknown): boolean {
+  if (!(error instanceof OverpassError)) {
+    return true;
+  }
+  if (error.timedOut) {
+    return false;
+  }
+  const { status } = error;
+  if (status === undefined) {
+    // Network / reachability failures have no HTTP status.
+    return true;
+  }
+  if (status === 429 || status === 408) {
+    return true;
+  }
+  return status >= 500;
+}
+
+/**
+ * Hostname for loader display from an interpreter URL.
+ * @param endpoint Full interpreter URL.
+ */
+export function hostnameFromEndpoint(endpoint: string): string {
+  try {
+    return new URL(endpoint).hostname;
+  } catch {
+    return endpoint;
+  }
+}
+
+/**
+ * Returns a Fisher–Yates shuffled copy of the endpoint list.
+ * @param endpoints Interpreter URLs to reorder.
+ */
+export function shuffleEndpoints(endpoints: readonly string[]): string[] {
+  const next = [...endpoints];
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    const current = next[index];
+    next[index] = next[swapIndex];
+    next[swapIndex] = current;
+  }
+  return next;
+}
+
+/**
+ * Merges an Overpass attempt event into the attempt list by endpoint index.
+ * @param attempts Current attempt snapshots.
+ * @param attempt Incoming progress event.
+ */
+export function mergeOverpassAttempt(
+  attempts: readonly OverpassAttemptEvent[],
+  attempt: OverpassAttemptEvent,
+): OverpassAttemptEvent[] {
+  const next = attempts.filter((entry) => entry.index !== attempt.index);
+  next.push(attempt);
+  next.sort((left, right) => left.index - right.index);
+  return next;
 }
 
 /**

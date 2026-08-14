@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client";
 import type {
   BBox,
   MapViewState,
@@ -34,6 +35,8 @@ export interface PlacesContextValue {
   loading: boolean;
   /** Current map camera state. */
   mapView: MapViewState;
+  /** Live Overpass interpreter attempts for the in-flight search. */
+  overpassAttempts: OverpassAttemptEvent[];
   /** Places from the latest successful search. */
   places: Place[];
   /** Runs a search with the current criteria. */

@@ -3,6 +3,7 @@ import { Spinner } from "@/components/core/Spinner";
 import { OVERPASS_TIMEOUT_SECONDS } from "@/constants/api.constants";
 import { usePlaces } from "@/contexts/PlacesContext";
 import { MapView } from "@/pages/Places/components/MapView";
+import { OverpassQueryStatus } from "@/pages/Places/components/OverpassQueryStatus";
 import { PlaceDetail } from "@/pages/Places/components/PlaceDetail";
 import { ResultsList } from "@/pages/Places/components/ResultsList";
 import { SearchFilters } from "@/pages/Places/components/SearchFilters";
@@ -22,6 +23,7 @@ export function PlacesLayout() {
     selectedPlaceId,
     selectPlace,
     loading,
+    overpassAttempts,
   } = usePlaces();
 
   const showPanel = places.length > 0;
@@ -110,6 +112,7 @@ export function PlacesLayout() {
             <p className={styles.countdown}>
               Up to {formatCountdown(remainingSeconds)} remaining
             </p>
+            <OverpassQueryStatus attempts={overpassAttempts} />
           </div>
         </div>
       ) : null}

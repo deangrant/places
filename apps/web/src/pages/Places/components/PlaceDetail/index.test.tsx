@@ -46,6 +46,7 @@ function stubPlaces(partial: Partial<PlacesContextValue>): void {
     geometryLoading: false,
     loading: false,
     mapView: { lat: 0, lon: 0, zoom: 1 },
+    overpassAttempts: [],
     places: [],
     runSearch: vi.fn(() => Promise.resolve()),
     selectedPlace: null,

@@ -7,12 +7,15 @@ import { Spinner } from "@/components/core/Spinner";
 import { OVERPASS_TIMEOUT_SECONDS } from "@/constants/api.constants";
 import { usePlaces } from "@/contexts/PlacesContext";
 import { useServices } from "@/contexts/ServicesContext";
+import { OverpassQueryStatus } from "@/pages/Places/components/OverpassQueryStatus";
 import {
   EXPORT_GEOMETRY_TYPE_PRIORITY,
   preparePlacesForGeometryExport,
   resolveEffectiveGeometryType,
 } from "@/services/export/export-places-by-geometry";
 import { downloadPlacesCsv } from "@/services/export/places-csv-export";
+import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client";
+import { mergeOverpassAttempt } from "@/services/overpass/overpass-http-client";
 import type { PlaceGeometryType } from "@/types/places.types";
 import styles from "./index.module.css";
 import type { ExportGeometryModalProps } from "./index.types";
@@ -64,6 +67,9 @@ export function ExportGeometryModal({
   const [remainingSeconds, setRemainingSeconds] = useState(
     OVERPASS_TIMEOUT_SECONDS,
   );
+  const [overpassAttempts, setOverpassAttempts] = useState<
+    OverpassAttemptEvent[]
+  >([]);
 
   useEffect(() => {
     if (!exporting) {
@@ -119,15 +125,24 @@ export function ExportGeometryModal({
 
     setExporting(true);
     setError(null);
+    setOverpassAttempts([]);
     const controller = new AbortController();
     const effectiveType = resolveEffectiveGeometryType(selectedGeometry);
 
     preparePlacesForGeometryExport(
       criteria,
       effectiveType,
-      (exportCriteria, geometryType, signal) =>
-        placeSearch.exportByGeometry(exportCriteria, geometryType, signal),
+      (exportCriteria, geometryType, signal, onAttempt) =>
+        placeSearch.exportByGeometry(
+          exportCriteria,
+          geometryType,
+          signal,
+          onAttempt,
+        ),
       controller.signal,
+      (attempt) => {
+        setOverpassAttempts((prev) => mergeOverpassAttempt(prev, attempt));
+      },
     )
       .then((prepared) => {
         downloadPlacesCsv(prepared);
@@ -146,6 +161,7 @@ export function ExportGeometryModal({
       })
       .finally(() => {
         setExporting(false);
+        setOverpassAttempts([]);
       });
   }, [
     criteria,
@@ -259,6 +275,7 @@ export function ExportGeometryModal({
                 <p className={styles.countdown}>
                   Up to {formatCountdown(remainingSeconds)} remaining
                 </p>
+                <OverpassQueryStatus attempts={overpassAttempts} />
               </div>
             </div>,
             document.body,

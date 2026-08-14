@@ -1,3 +1,5 @@
+import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client";
+import { mergeOverpassAttempt } from "@/services/overpass/overpass-http-client";
 import type { PlaceGeometryUpdate } from "@/services/places/place-search-service";
 import type { BBox, Place } from "@/types/places.types";
 
@@ -13,6 +15,8 @@ export interface PlacesSessionState {
   geometryLoading: boolean;
   /** True while a Places search is in flight. */
   loading: boolean;
+  /** Live Overpass interpreter attempts for the in-flight search. */
+  overpassAttempts: OverpassAttemptEvent[];
   /** Places from the latest successful search. */
   places: Place[];
   /** Selected place id, or null when none. */
@@ -27,6 +31,7 @@ export const initialPlacesSessionState: PlacesSessionState = {
   error: null,
   geometryLoading: false,
   loading: false,
+  overpassAttempts: [],
   places: [],
   selectedPlaceId: null,
   truncated: false,
@@ -41,6 +46,7 @@ export type PlacesSessionAction =
   | { type: "geometry/failed"; message: string }
   | { type: "geometry/settled" }
   | { type: "geometry/succeeded"; placeId: string; update: PlaceGeometryUpdate }
+  | { type: "search/attempt"; attempt: OverpassAttemptEvent }
   | { type: "search/failed"; message: string }
   | { type: "search/finished" }
   | {
@@ -97,6 +103,15 @@ export function placesSessionReducer(
         ),
       };
     }
+    case "search/attempt": {
+      return {
+        ...state,
+        overpassAttempts: mergeOverpassAttempt(
+          state.overpassAttempts,
+          action.attempt,
+        ),
+      };
+    }
     case "search/failed": {
       return {
         ...state,
@@ -108,7 +123,7 @@ export function placesSessionReducer(
       };
     }
     case "search/finished": {
-      return { ...state, loading: false };
+      return { ...state, loading: false, overpassAttempts: [] };
     }
     case "search/started": {
       return {
@@ -117,6 +132,7 @@ export function placesSessionReducer(
         error: null,
         geometryLoading: false,
         loading: true,
+        overpassAttempts: [],
         places: [],
         selectedPlaceId: null,
         truncated: false,

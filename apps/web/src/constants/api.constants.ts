@@ -1,5 +1,10 @@
-/** Default public Overpass interpreter endpoint. */
-export const OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter";
+/** Public Overpass interpreters (equal weight; shuffled per query). */
+export const OVERPASS_ENDPOINTS = [
+  "https://overpass.private.coffee/api/interpreter",
+  "https://overpass-api.de/api/interpreter",
+  "https://z.overpass-api.de/api/interpreter",
+  "https://lz4.overpass-api.de/api/interpreter",
+] as const;
 
 /** Nominatim search endpoint. */
 export const NOMINATIM_ENDPOINT = "https://nominatim.openstreetmap.org/search";

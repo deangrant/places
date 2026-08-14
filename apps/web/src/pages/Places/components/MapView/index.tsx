@@ -5,7 +5,7 @@ import { ExportGeometryModal } from "@/pages/Places/components/ExportGeometryMod
 import "mapbox-gl/dist/mapbox-gl.css";
 import styles from "./index.module.css";
 import type { MapViewProps } from "./index.types";
-import { MapControls } from "./MapControls";
+import { MapControls } from "./map-controls";
 import { isGeoJsonSource, nearlyEqual, placesToGeoJson } from "./map-helpers";
 import {
   addPlacesMapLayers,

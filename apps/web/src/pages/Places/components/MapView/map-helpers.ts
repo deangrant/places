@@ -1,4 +1,4 @@
-import type mapboxgl from "mapbox-gl";
+import type { GeoJSONSource, Source } from "mapbox-gl";
 import type { Place } from "@/types/places.types";
 
 /**
@@ -28,8 +28,8 @@ export function placesToGeoJson(
 
 /** Narrows a Mapbox source to GeoJSON when present. */
 export function isGeoJsonSource(
-  source: mapboxgl.Source | undefined,
-): source is mapboxgl.GeoJSONSource {
+  source: Source | undefined,
+): source is GeoJSONSource {
   return source !== undefined && source.type === "geojson";
 }
 
