@@ -15,6 +15,21 @@
   animation: spin 0.7s linear infinite;
 }
 
+.lg {
+  flex-direction: column;
+  gap: var(--space-4);
+  font-size: 1.15rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-text);
+}
+
+.lg .dot {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-width: 3px;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);

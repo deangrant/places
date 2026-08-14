@@ -5,7 +5,6 @@ import { Input } from "@/components/core/Input";
 import { Select } from "@/components/core/Select";
 import { Autocomplete } from "@/components/patterns/Autocomplete";
 import { FormField } from "@/components/patterns/FormField";
-import { OSM_COPYRIGHT_URL } from "@/constants/api.constants";
 import { COUNTRY_OPTIONS } from "@/constants/categories.constants";
 import { OSM_TAG_KEY_ALLOWLIST } from "@/constants/osm-tags.constants";
 import { usePlaces } from "@/contexts/PlacesContext";
@@ -225,17 +224,6 @@ export function SearchFilters() {
           {error}
         </p>
       ) : null}
-
-      <p className={styles.attribution}>
-        Place data{" "}
-        <a href={OSM_COPYRIGHT_URL} rel="noopener noreferrer" target="_blank">
-          © OpenStreetMap contributors
-        </a>
-        <span className={styles.attributionSources}>
-          {" "}
-          · Overpass · Nominatim
-        </span>
-      </p>
     </section>
   );
 }

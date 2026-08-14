@@ -5,10 +5,9 @@ import type { ResultRowProps } from "./index.types";
 
 /** Compact Places results list with row selection. */
 export function ResultsList() {
-  const { places, selectedPlaceId, selectPlace, loading, truncated } =
-    usePlaces();
+  const { places, selectedPlaceId, selectPlace, truncated } = usePlaces();
 
-  if (!loading && places.length === 0) {
+  if (places.length === 0) {
     return (
       <div className={styles.empty}>
         No places yet. Choose filters and run a search.
@@ -16,10 +15,7 @@ export function ResultsList() {
     );
   }
 
-  let title = places.length === 1 ? "1 place" : `${places.length} places`;
-  if (loading) {
-    title = "Searching…";
-  }
+  const title = places.length === 1 ? "1 place" : `${places.length} places`;
 
   return (
     <div className={styles.root}>

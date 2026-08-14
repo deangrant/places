@@ -2,9 +2,13 @@ import styles from "./index.module.css";
 import type { SpinnerProps } from "./index.types";
 
 /** Compact loading indicator for search-in-progress states. */
-export function Spinner({ label = "Loading" }: SpinnerProps) {
+export function Spinner({ label = "Loading", size = "sm" }: SpinnerProps) {
+  const className = [styles.root, size === "lg" ? styles.lg : undefined]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <span className={styles.root} role="status">
+    <span className={className} role="status">
       <span aria-hidden className={styles.dot} />
       {label}
     </span>

@@ -1,5 +1,8 @@
 # Dependencies
 node_modules/
+.pnpm/
+.pnpm-store/
+pnpm-store/
 
 # Builds
 dist/

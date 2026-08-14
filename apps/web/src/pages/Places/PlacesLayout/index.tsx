@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Spinner } from "@/components/core/Spinner";
+import { OVERPASS_TIMEOUT_SECONDS } from "@/constants/api.constants";
 import { usePlaces } from "@/contexts/PlacesContext";
 import { MapView } from "@/pages/Places/components/MapView";
 import { PlaceDetail } from "@/pages/Places/components/PlaceDetail";
@@ -22,7 +23,21 @@ export function PlacesLayout() {
     loading,
   } = usePlaces();
 
-  const showPanel = places.length > 0 || loading;
+  const showPanel = places.length > 0;
+  const [remainingSeconds, setRemainingSeconds] = useState(
+    OVERPASS_TIMEOUT_SECONDS,
+  );
+
+  useEffect(() => {
+    if (!loading) {
+      return;
+    }
+    setRemainingSeconds(OVERPASS_TIMEOUT_SECONDS);
+    const intervalId = window.setInterval(() => {
+      setRemainingSeconds((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => window.clearInterval(intervalId);
+  }, [loading]);
 
   useEffect(() => {
     if (!selectedPlace) {
@@ -38,16 +53,11 @@ export function PlacesLayout() {
   }, [selectedPlace, selectPlace]);
 
   return (
-    <div className={styles.root}>
+    <div aria-busy={loading} className={styles.root}>
       <SearchFilters />
 
       <div className={styles.workspace}>
         <section aria-label="Map" className={styles.mapPane}>
-          {loading ? (
-            <div className={styles.loadingOverlay}>
-              <Spinner label="Querying places…" />
-            </div>
-          ) : null}
           <MapView
             boundsToFit={boundsToFit}
             onBoundsFitted={clearBoundsToFit}
@@ -69,6 +79,27 @@ export function PlacesLayout() {
           </aside>
         ) : null}
       </div>
+
+      {loading ? (
+        <div className={styles.loadingOverlay}>
+          <div className={styles.loadingCard}>
+            <Spinner label="Searching places. Please wait..." size="lg" />
+            <p className={styles.countdown}>
+              Up to {formatCountdown(remainingSeconds)} remaining
+            </p>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
+}
+
+/**
+ * Formats remaining seconds as M:SS for the search timeout countdown.
+ * @param totalSeconds Seconds left before the soft Overpass timeout.
+ */
+function formatCountdown(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }

@@ -81,7 +81,7 @@ describe("PlaceQueryBuilder", () => {
 
   it("builds a geometry query for ways and relations", () => {
     expect(builder.buildGeometryQuery("way", 42)).toBe(
-      "[out:json][timeout:500];\nway(42);\nout geom;",
+      "[out:json][timeout:300];\nway(42);\nout geom;",
     );
     expect(builder.buildGeometryQuery("relation", 7)).toContain("relation(7);");
   });
