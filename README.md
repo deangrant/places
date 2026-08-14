@@ -19,6 +19,7 @@ cp apps/web/.env.example apps/web/.env
 # edit VITE_MAPBOX_GL_JS_PUBLIC=
 ```
 
+The token must allow your app origin(s) under Mapbox [URL restrictions](https://docs.mapbox.com/accounts/guides/tokens/#url-restrictions). For local development, include `http://localhost:5173`. Add each preview and production HTTPS origin the same way when you deploy.
 ## Develop
 
 ```bash
