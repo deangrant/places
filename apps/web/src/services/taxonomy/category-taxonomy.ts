@@ -17,11 +17,12 @@ export interface ICategoryLookup {
 }
 
 /**
- * Matches OSM element tags to the best curated category.
+ * Matches OSM element tags to a curated category (first match in definition order).
  */
 export interface ICategoryMatcher {
   /**
-   * Finds the best matching category for a set of OSM tags.
+   * Returns the first category in taxonomy definition order whose tags match.
+   * Multi-tagged elements are not ranked; earlier definitions win.
    * @param tags OSM key/value tags on an element.
    */
   matchTags: (tags: Record<string, string>) => CategoryDefinition | undefined;

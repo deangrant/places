@@ -51,6 +51,12 @@ pnpm preview
 
 Place data © OpenStreetMap contributors (ODbL). Map display © Mapbox / OpenStreetMap.
 
+## Known limitations
+
+- **Category labels use first-match order.** When an OSM element matches more than one curated industry, the app assigns the first matching category in the bundled taxonomy list—not a scored “best” industry.
+- **Country filter is a short allowlist.** The country dropdown offers a curated set of ISO codes, not every country.
+- **Brand search is exact.** Brand autocomplete suggests substring matches from a popular-chains list, but the Overpass query requires a case-insensitive exact match on the OSM `brand` tag (unlike place name, which is a substring filter). Type or pick the full brand value as tagged in OSM.
+
 ## License
 
 MIT — see [LICENSE](./LICENSE).

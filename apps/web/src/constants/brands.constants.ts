@@ -1,6 +1,6 @@
 /**
  * Popular chain brands commonly tagged on OpenStreetMap.
- * Used for autocomplete; free-text brand filters remain allowed.
+ * Used for autocomplete suggestions only; the search filter still exact-matches the typed `brand` value.
  */
 export const BRAND_CATALOG: string[] = [
   "Starbucks",

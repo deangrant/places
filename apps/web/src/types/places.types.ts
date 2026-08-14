@@ -28,7 +28,7 @@ export interface MapViewState {
  * User-facing Places search criteria (never Overpass QL).
  */
 export interface PlaceSearchCriteria {
-  /** Brand name filter (exact catalog pick or free text). */
+  /** Brand filter: case-insensitive exact match on OSM `brand` (free text allowed; still exact). */
   brand?: string;
   /** Taxonomy category id, when filtering by industry. */
   categoryId?: string;

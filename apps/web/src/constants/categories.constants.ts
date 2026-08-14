@@ -212,7 +212,7 @@ export const CATEGORY_DEFINITIONS: CategoryDefinition[] = [
   },
 ];
 
-/** ISO 3166-1 alpha-2 countries commonly used in Places filters. */
+/** Curated ISO 3166-1 alpha-2 countries for the Places country filter UI (not a full ISO set). */
 export const COUNTRY_OPTIONS: { code: string; name: string }[] = [
   { code: "US", name: "United States" },
   { code: "CA", name: "Canada" },

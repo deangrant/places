@@ -156,7 +156,8 @@ export class PlaceQueryBuilder implements IPlaceQueryBuilder {
   }
 
   /**
-   * Formats an optional case-insensitive brand regex filter.
+   * Formats an optional case-insensitive exact brand filter (`^…$`).
+   * Unlike {@link PlaceQueryBuilder.formatNameClause}, this is not a substring match.
    * @param brand Brand text from the user.
    */
   private formatBrandClause(brand?: string): string {
