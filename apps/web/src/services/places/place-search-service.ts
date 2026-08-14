@@ -92,7 +92,6 @@ export class PlaceSearchService implements IPlaceSearchService {
   ): Promise<PlaceSearchResult> {
     this.assertHasFilters(criteria);
 
-    const started = performance.now();
     const scope = await this.resolveScope(criteria, signal);
     const query = this.queryBuilder.build(criteria, scope);
     const response = await this.overpass.query(query, signal);
@@ -109,7 +108,6 @@ export class PlaceSearchService implements IPlaceSearchService {
     });
 
     return {
-      durationMs: Math.round(performance.now() - started),
       places,
       scope,
       truncated: response.elements.length >= RESULT_LIMIT,
@@ -216,13 +214,11 @@ export class PlaceSearchService implements IPlaceSearchService {
       const areaId = toOverpassAreaId(admin.osmType, admin.osmId);
       return {
         areaId,
-        label: admin.displayName,
       };
     } catch {
       // Fall back to the Nominatim bounding box when area conversion fails.
       return {
         bbox: admin.boundingBox,
-        label: admin.displayName,
       };
     }
   }

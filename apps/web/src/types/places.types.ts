@@ -211,16 +211,12 @@ export interface SpatialScope {
   areaId?: number;
   /** Bounding box constraint. */
   bbox?: BBox;
-  /** Human-readable label for the status bar. */
-  label: string;
 }
 
 /**
  * Outcome of a Places search run.
  */
 export interface PlaceSearchResult {
-  /** Wall-clock duration in milliseconds. */
-  durationMs: number;
   /** Normalized places from the Overpass response. */
   places: Place[];
   /** Scope used for the query. */
