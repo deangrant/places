@@ -1,3 +1,4 @@
+/// <reference types="geojson" />
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {

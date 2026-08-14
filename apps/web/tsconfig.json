@@ -15,10 +15,9 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "skipLibCheck": true,
+    "skipLibCheck": false,
     "strict": true,
     "target": "ES2022",
-    "types": ["*"],
     "useDefineForClassFields": true
   },
   "include": ["src"]
