@@ -173,6 +173,15 @@ function inferTopCategory(tags: Record<string, string>): string | null {
   if (Object.hasOwn(tags, "leisure")) {
     return "Arts and Recreation";
   }
+  if (Object.hasOwn(tags, "office")) {
+    return "Professional Services";
+  }
+  if (Object.hasOwn(tags, "craft")) {
+    return "Other Services";
+  }
+  if (Object.hasOwn(tags, "healthcare")) {
+    return "Health Care";
+  }
   return null;
 }
 
@@ -181,7 +190,15 @@ function inferTopCategory(tags: Record<string, string>): string | null {
  * @param tags OSM tags.
  */
 function inferSubCategory(tags: Record<string, string>): string | null {
-  const value = ["amenity", "shop", "tourism", "leisure"]
+  const value = [
+    "amenity",
+    "shop",
+    "tourism",
+    "leisure",
+    "office",
+    "craft",
+    "healthcare",
+  ]
     .map((key) => readTag(tags, key))
     .find((candidate) => candidate !== null);
   if (!value) {

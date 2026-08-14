@@ -2,7 +2,7 @@ import { type ChangeEvent, useCallback } from "react";
 import styles from "./index.module.css";
 import type { SelectProps } from "./index.types";
 
-/** Native select control for country and category filters. */
+/** Native select control for filter dropdowns. */
 export function Select({
   id,
   value,

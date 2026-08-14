@@ -1,5 +1,5 @@
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/core/Button";
 import { Input } from "@/components/core/Input";
 import { Select } from "@/components/core/Select";
@@ -15,15 +15,39 @@ import styles from "./index.module.css";
 export function SearchFilters() {
   const { criteria, setCriteria, loading, runSearch, error } = usePlaces();
   const { brandCatalog, taxonomy } = useServices();
+  const [selectedTop, setSelectedTop] = useState("");
 
-  const categoryOptions = useMemo(
+  const leafCategory = useMemo(
     () =>
-      taxonomy.list().map((category) => ({
-        label: `${category.topCategory} · ${category.subCategory}`,
-        value: category.id,
+      criteria.categoryId ? taxonomy.getById(criteria.categoryId) : undefined,
+    [criteria.categoryId, taxonomy],
+  );
+
+  const categoryValue = leafCategory?.topCategory ?? selectedTop;
+
+  const topCategoryOptions = useMemo(
+    () =>
+      taxonomy.listTopCategories().map((topCategory) => ({
+        label: topCategory,
+        value: topCategory,
       })),
     [taxonomy],
   );
+
+  const subcategoryOptions = useMemo(() => {
+    if (!categoryValue) {
+      return [];
+    }
+    return taxonomy.listByTopCategory(categoryValue).map((category) => ({
+      label: category.subCategory,
+      value: category.id,
+    }));
+  }, [categoryValue, taxonomy]);
+
+  const subcategoryValue =
+    leafCategory && leafCategory.topCategory === categoryValue
+      ? leafCategory.id
+      : "";
 
   const osmTagKeyOptions = useMemo(
     () =>
@@ -62,7 +86,15 @@ export function SearchFilters() {
     [setCriteria],
   );
 
-  const handleCategoryChange = useCallback(
+  const handleTopCategoryChange = useCallback(
+    (value: string) => {
+      setSelectedTop(value);
+      setCriteria({ categoryId: undefined });
+    },
+    [setCriteria],
+  );
+
+  const handleSubcategoryChange = useCallback(
     (value: string) => {
       setCriteria({ categoryId: value || undefined });
     },
@@ -138,13 +170,26 @@ export function SearchFilters() {
           />
         </FormField>
 
-        <FormField htmlFor="category" label="Industry / category">
+        <FormField htmlFor="category" label="Category">
           <Select
             id="category"
-            onChange={handleCategoryChange}
-            options={categoryOptions}
+            onChange={handleTopCategoryChange}
+            options={topCategoryOptions}
             placeholder="Any category"
-            value={criteria.categoryId ?? ""}
+            value={categoryValue}
+          />
+        </FormField>
+
+        <FormField htmlFor="subcategory" label="Subcategory">
+          <Select
+            disabled={!categoryValue}
+            id="subcategory"
+            onChange={handleSubcategoryChange}
+            options={subcategoryOptions}
+            placeholder={
+              categoryValue ? "Any subcategory" : "Select a category first"
+            }
+            value={subcategoryValue}
           />
         </FormField>
 

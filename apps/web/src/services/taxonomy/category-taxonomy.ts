@@ -14,6 +14,15 @@ export interface ICategoryLookup {
    * Returns every category definition.
    */
   list: () => CategoryDefinition[];
+  /**
+   * Returns leaf categories for a top category, sorted by subCategory.
+   * @param topCategory High-level category label from the taxonomy.
+   */
+  listByTopCategory: (topCategory: string) => CategoryDefinition[];
+  /**
+   * Returns unique top-category labels sorted A–Z for the Category filter.
+   */
+  listTopCategories: () => string[];
 }
 
 /**
@@ -52,6 +61,20 @@ export class CategoryTaxonomy implements ICategoryTaxonomy {
   }
 
   /** @inheritdoc */
+  listTopCategories(): string[] {
+    return [
+      ...new Set(CATEGORY_DEFINITIONS.map((category) => category.topCategory)),
+    ].sort((a, b) => a.localeCompare(b));
+  }
+
+  /** @inheritdoc */
+  listByTopCategory(topCategory: string): CategoryDefinition[] {
+    return CATEGORY_DEFINITIONS.filter(
+      (category) => category.topCategory === topCategory,
+    ).sort((a, b) => a.subCategory.localeCompare(b.subCategory));
+  }
+
+  /** @inheritdoc */
   matchTags(tags: Record<string, string>): CategoryDefinition | undefined {
     for (const category of CATEGORY_DEFINITIONS) {
       if (
@@ -64,7 +87,17 @@ export class CategoryTaxonomy implements ICategoryTaxonomy {
 }
 
 /**
+ * Builds a stable display label for uniqueness checks and diagnostics.
+ * @param category Taxonomy category definition.
+ */
+export function formatCategoryLabel(category: CategoryDefinition): string {
+  return `${category.topCategory} · ${category.subCategory}`;
+}
+
+/**
  * Returns true when the OSM tags include the given predicate.
+ * @param tags OSM key/value tags on an element.
+ * @param predicate Exact key=value predicate from a category definition.
  */
 function matchesPredicate(
   tags: Record<string, string>,
