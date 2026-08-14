@@ -1,6 +1,6 @@
 import { RESULT_LIMIT } from "@/constants/api.constants";
 import { isAllowedOsmTagKey } from "@/constants/osm-tags.constants";
-import type { IAreaResolver } from "@/services/geocoding/nominatim-geocoder";
+import type { IAreaResolver } from "@/services/geocoding/nominatim-area-resolver";
 import type { IOverpassClient } from "@/services/overpass/overpass-http-client";
 import { describeOverpassRemark } from "@/services/overpass/overpass-http-client";
 import type { IOsmPlaceNormalizer } from "@/services/places/osm-place-normalizer";

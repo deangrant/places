@@ -2,18 +2,6 @@ import { NOMINATIM_ENDPOINT } from "@/constants/api.constants";
 import type { BBox, GeocodeResult } from "@/types/places.types";
 
 /**
- * Forward geocoder for place search / fly-to.
- */
-export interface IGeocoder {
-  /**
-   * Searches Nominatim for places matching free-form text.
-   * @param query Free-form search string.
-   * @param signal Optional abort signal.
-   */
-  search: (query: string, signal?: AbortSignal) => Promise<GeocodeResult[]>;
-}
-
-/**
  * Resolves administrative areas for Overpass spatial scoping.
  */
 export interface IAreaResolver {
@@ -30,9 +18,9 @@ export interface IAreaResolver {
 }
 
 /**
- * Nominatim-backed geocoder and admin area resolver.
+ * Nominatim-backed admin area resolver for Overpass spatial scope.
  */
-export class NominatimGeocoder implements IGeocoder, IAreaResolver {
+export class NominatimAreaResolver implements IAreaResolver {
   private readonly endpoint: string;
 
   /**
@@ -40,22 +28,6 @@ export class NominatimGeocoder implements IGeocoder, IAreaResolver {
    */
   constructor(endpoint: string = NOMINATIM_ENDPOINT) {
     this.endpoint = endpoint;
-  }
-
-  /** @inheritdoc */
-  search(query: string, signal?: AbortSignal): Promise<GeocodeResult[]> {
-    const trimmed = query.trim();
-    if (!trimmed) {
-      return Promise.resolve([]);
-    }
-    const url = new URL(this.endpoint);
-    url.searchParams.set("q", trimmed);
-    url.searchParams.set("format", "json");
-    url.searchParams.set("addressdetails", "1");
-    url.searchParams.set("limit", "8");
-    // Browser clients cannot set User-Agent; Nominatim accepts email for contact.
-    url.searchParams.set("email", "places-explorer@localhost");
-    return this.fetchResults(url, signal);
   }
 
   /** @inheritdoc */
@@ -72,6 +44,7 @@ export class NominatimGeocoder implements IGeocoder, IAreaResolver {
     url.searchParams.set("format", "json");
     url.searchParams.set("addressdetails", "1");
     url.searchParams.set("limit", "1");
+    // Browser clients cannot set User-Agent; Nominatim accepts email for contact.
     url.searchParams.set("email", "places-explorer@localhost");
 
     if (city) {
