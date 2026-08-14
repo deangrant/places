@@ -1,11 +1,12 @@
 import mapboxgl from "mapbox-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MAP_WORLD_BOUNDS, MAPBOX_STYLE_URL } from "@/constants/api.constants";
-import { downloadPlacesCsv } from "@/services/export/places-csv-export";
-import type { Place } from "@/types/places.types";
+import { ExportGeometryModal } from "@/pages/Places/components/ExportGeometryModal";
 import "mapbox-gl/dist/mapbox-gl.css";
 import styles from "./index.module.css";
 import type { MapViewProps } from "./index.types";
+import { MapControls } from "./MapControls";
+import { isGeoJsonSource, nearlyEqual, placesToGeoJson } from "./map-helpers";
 import {
   addPlacesMapLayers,
   PLACES_CLUSTERS_LAYER_ID,
@@ -28,6 +29,8 @@ export function MapView({
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const mapReadyRef = useRef(false);
   const [mapReady, setMapReady] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportModalKey, setExportModalKey] = useState(0);
   const onViewChangeRef = useRef(onViewChange);
   const onSelectPlaceRef = useRef(onSelectPlace);
   const onBoundsFittedRef = useRef(onBoundsFitted);
@@ -40,9 +43,14 @@ export function MapView({
     onBoundsFittedRef.current = onBoundsFitted;
   }, [onViewChange, onSelectPlace, onBoundsFitted]);
 
-  const handleExportCsv = useCallback(() => {
-    downloadPlacesCsv(places);
-  }, [places]);
+  const handleOpenExportModal = useCallback(() => {
+    setExportModalKey((key) => key + 1);
+    setExportModalOpen(true);
+  }, []);
+
+  const handleCloseExportModal = useCallback(() => {
+    setExportModalOpen(false);
+  }, []);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -258,95 +266,18 @@ export function MapView({
     <div className={styles.root}>
       <div className={styles.mapCanvas} ref={containerRef} />
       {places.length > 0 ? (
-        <div className={styles.mapControls}>
-          <button
-            aria-label="Fit results to map"
-            className={styles.mapControl}
-            onClick={onFitResults}
-            type="button"
-          >
-            <svg
-              aria-hidden="true"
-              className={styles.mapControlIcon}
-              fill="none"
-              focusable="false"
-              height="18"
-              role="presentation"
-              viewBox="0 0 24 24"
-              width="18"
-            >
-              <path
-                d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.75"
-              />
-            </svg>
-          </button>
-          <button
-            aria-label="Export results as CSV"
-            className={styles.mapControl}
-            onClick={handleExportCsv}
-            title="Export results as CSV"
-            type="button"
-          >
-            <svg
-              aria-hidden="true"
-              className={styles.mapControlIcon}
-              fill="none"
-              focusable="false"
-              height="18"
-              role="presentation"
-              viewBox="0 0 24 24"
-              width="18"
-            >
-              <path
-                d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.75"
-              />
-            </svg>
-          </button>
-        </div>
+        <MapControls
+          onExport={handleOpenExportModal}
+          onFitResults={onFitResults}
+        />
+      ) : null}
+      {exportModalOpen ? (
+        <ExportGeometryModal
+          key={exportModalKey}
+          onClose={handleCloseExportModal}
+          open
+        />
       ) : null}
     </div>
   );
-}
-
-/**
- * Builds point features for place markers.
- * @param places Search result places.
- * @param selectedPlaceId Currently selected place id.
- */
-function placesToGeoJson(
-  places: Place[],
-  selectedPlaceId: string | null,
-): GeoJSON.FeatureCollection {
-  return {
-    features: places.map((place) => ({
-      geometry: {
-        coordinates: [place.longitude, place.latitude],
-        type: "Point",
-      },
-      properties: {
-        id: place.id,
-        selected: place.id === selectedPlaceId,
-      },
-      type: "Feature",
-    })),
-    type: "FeatureCollection",
-  };
-}
-
-function isGeoJsonSource(
-  source: mapboxgl.Source | undefined,
-): source is mapboxgl.GeoJSONSource {
-  return source !== undefined && source.type === "geojson";
-}
-
-function nearlyEqual(a: number, b: number, epsilon = 1e-9): boolean {
-  return Math.abs(a - b) < epsilon;
 }

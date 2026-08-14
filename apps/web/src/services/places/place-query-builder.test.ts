@@ -22,6 +22,9 @@ const coffee: CategoryDefinition = {
 const taxonomy: ICategoryLookup = {
   getById: (id) => (id === coffee.id ? coffee : undefined),
   list: () => [coffee],
+  listByTopCategory: (topCategory) =>
+    topCategory === coffee.topCategory ? [coffee] : [],
+  listTopCategories: () => [coffee.topCategory],
 };
 
 describe("toOverpassAreaId", () => {
@@ -84,5 +87,22 @@ describe("PlaceQueryBuilder", () => {
       "[out:json][timeout:300];\nway(42);\nout geom;",
     );
     expect(builder.buildGeometryQuery("relation", 7)).toContain("relation(7);");
+  });
+
+  it("emits out center by default and out geom when requested", () => {
+    const centerQl = builder.build(
+      { brand: "Starbucks" },
+      { areaId: 3_600_000_001 },
+    );
+    expect(centerQl).toContain("out center 2500;");
+    expect(centerQl).not.toContain("out geom");
+
+    const geomQl = builder.build(
+      { brand: "Starbucks" },
+      { areaId: 3_600_000_001 },
+      "geom",
+    );
+    expect(geomQl).toContain("out geom 2500;");
+    expect(geomQl).not.toContain("out center");
   });
 });

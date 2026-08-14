@@ -51,4 +51,26 @@ describe("OsmPlaceNormalizer", () => {
     expect(place.city).toBe("Seattle");
     expect(place.website).toBe("starbucks.com");
   });
+
+  it("maps full footprints with normalizeWithGeometry", () => {
+    const elements: OsmElement[] = [
+      {
+        geometry: [
+          { lat: 0, lon: 0 },
+          { lat: 0, lon: 1 },
+          { lat: 1, lon: 1 },
+          { lat: 1, lon: 0 },
+          { lat: 0, lon: 0 },
+        ],
+        id: 9,
+        tags: { building: "retail", name: "Store" },
+        type: "way",
+      },
+    ];
+    const [place] = normalizer.normalizeWithGeometry(elements);
+    expect(place.id).toBe("way/9");
+    expect(place.geometryType).toBe("POLYGON");
+    expect(place.geometry.polygons).toHaveLength(1);
+    expect(place.locationName).toBe("Store");
+  });
 });

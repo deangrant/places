@@ -40,6 +40,8 @@ function createWrapper(placeSearch: IPlaceSearchService) {
     taxonomy: {
       getById: () => undefined,
       list: () => [],
+      listByTopCategory: () => [],
+      listTopCategories: () => [],
       matchTags: () => undefined,
     },
   };
@@ -60,6 +62,7 @@ describe("PlacesProvider", () => {
     });
 
     const placeSearch: IPlaceSearchService = {
+      exportByGeometry: vi.fn(() => Promise.resolve([])),
       fetchPlaceGeometry: vi.fn(() => Promise.resolve(null)),
       search: vi
         .fn()
@@ -108,6 +111,7 @@ describe("PlacesProvider", () => {
     const fetchPlaceGeometry = vi.fn(() => Promise.resolve(null));
     const place = makePlace({ id: "way/9", osmId: 9, osmType: "way" });
     const placeSearch: IPlaceSearchService = {
+      exportByGeometry: vi.fn(() => Promise.resolve([])),
       fetchPlaceGeometry,
       search: vi.fn(() =>
         Promise.resolve({
@@ -138,6 +142,7 @@ describe("PlacesProvider", () => {
 
   it("clears truncated on search failure", async () => {
     const placeSearch: IPlaceSearchService = {
+      exportByGeometry: vi.fn(() => Promise.resolve([])),
       fetchPlaceGeometry: vi.fn(() => Promise.resolve(null)),
       search: vi
         .fn()

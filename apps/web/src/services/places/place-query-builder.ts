@@ -11,6 +11,13 @@ import type {
 } from "@/types/places.types";
 
 /**
+ * Overpass print mode for a Places criteria query.
+ * - `center` — centroids only (map search)
+ * - `geom` — full footprints (geometry export)
+ */
+export type PlaceQueryOutputMode = "center" | "geom";
+
+/**
  * Builds Overpass QL from Places search criteria.
  */
 export interface IPlaceQueryBuilder {
@@ -18,8 +25,13 @@ export interface IPlaceQueryBuilder {
    * Compiles criteria and a resolved spatial scope into Overpass QL.
    * @param criteria User-facing search filters.
    * @param scope Resolved area and/or bbox constraint.
+   * @param outputMode Overpass print mode; defaults to `center`.
    */
-  build: (criteria: PlaceSearchCriteria, scope: SpatialScope) => string;
+  build: (
+    criteria: PlaceSearchCriteria,
+    scope: SpatialScope,
+    outputMode?: PlaceQueryOutputMode,
+  ) => string;
   /**
    * Compiles an Overpass QL script that fetches full geometry for one element.
    * @param osmType OSM element type (`way` or `relation`).
@@ -42,7 +54,11 @@ export class PlaceQueryBuilder implements IPlaceQueryBuilder {
   }
 
   /** @inheritdoc */
-  build(criteria: PlaceSearchCriteria, scope: SpatialScope): string {
+  build(
+    criteria: PlaceSearchCriteria,
+    scope: SpatialScope,
+    outputMode: PlaceQueryOutputMode = "center",
+  ): string {
     const spatial = this.formatSpatialFilter(scope);
     const filters = this.buildTagFilters(criteria);
 
@@ -55,13 +71,18 @@ export class PlaceQueryBuilder implements IPlaceQueryBuilder {
       .map((filter) => `  ${filter}${spatial};`)
       .join("\n");
 
+    const outClause =
+      outputMode === "geom"
+        ? `out geom ${RESULT_LIMIT};`
+        : `out center ${RESULT_LIMIT};`;
+
     return [
       `[out:json][timeout:${OVERPASS_TIMEOUT_SECONDS}];`,
       this.formatAreaPreamble(scope),
       "(",
       unionBody,
       ");",
-      `out center ${RESULT_LIMIT};`,
+      outClause,
     ]
       .filter(Boolean)
       .join("\n");

@@ -8,6 +8,7 @@ import { PlaceSearchService } from "@/services/places/place-search-service";
 import type {
   GeocodeResult,
   OsmElement,
+  Place,
   PlaceSearchCriteria,
 } from "@/types/places.types";
 
@@ -40,6 +41,33 @@ const adminNode: GeocodeResult = {
   osmType: "node",
 };
 
+function makePlace(
+  partial: Partial<Place> & Pick<Place, "id" | "geometryType">,
+): Place {
+  return {
+    brands: [],
+    city: null,
+    geometry: { polygons: [] },
+    geometryWkt: "POINT(0 0)",
+    isoCountryCode: null,
+    latitude: 0,
+    locationName: null,
+    longitude: 0,
+    openHours: null,
+    osmId: 1,
+    osmType: "node",
+    phoneNumber: null,
+    postalCode: null,
+    region: null,
+    streetAddress: null,
+    subCategory: null,
+    tags: {},
+    topCategory: null,
+    website: null,
+    ...partial,
+  };
+}
+
 function createService(options: {
   areaResolver?: IAreaResolver;
   overpass?: IOverpassClient;
@@ -55,6 +83,7 @@ function createService(options: {
   };
   const normalizer: IOsmPlaceNormalizer = options.normalizer ?? {
     normalize: vi.fn(() => []),
+    normalizeWithGeometry: vi.fn(() => []),
   };
   const areaResolver: IAreaResolver = options.areaResolver ?? {
     resolveAdmin: vi.fn(async () => adminRelation),
@@ -130,6 +159,7 @@ describe("PlaceSearchService.search", () => {
     expect(queryBuilder.build).toHaveBeenCalledWith(
       baseCriteria,
       expect.objectContaining({ bbox: adminNode.boundingBox }),
+      "center",
     );
   });
 
@@ -148,6 +178,77 @@ describe("PlaceSearchService.search", () => {
     await expect(
       service.search(baseCriteria, controller.signal),
     ).rejects.toMatchObject({ name: "AbortError" });
+  });
+});
+
+describe("PlaceSearchService.exportByGeometry", () => {
+  it("uses center output and center normalizer for POINT", async () => {
+    const queryBuilder: IPlaceQueryBuilder = {
+      build: vi.fn(() => "center-query"),
+      buildGeometryQuery: vi.fn(() => "geom"),
+    };
+    const normalizer: IOsmPlaceNormalizer = {
+      normalize: vi.fn(() => [
+        makePlace({ geometryType: "POINT", id: "node/1" }),
+      ]),
+      normalizeWithGeometry: vi.fn(() => []),
+    };
+    const overpass = {
+      query: vi.fn(async () => ({
+        elements: [{ id: 1, type: "node" as const }],
+      })),
+    };
+    const { service } = createService({ normalizer, overpass, queryBuilder });
+
+    const places = await service.exportByGeometry(baseCriteria, "POINT");
+
+    expect(queryBuilder.build).toHaveBeenCalledWith(
+      baseCriteria,
+      expect.objectContaining({ areaId: expect.any(Number) }),
+      "center",
+    );
+    expect(normalizer.normalize).toHaveBeenCalled();
+    expect(normalizer.normalizeWithGeometry).not.toHaveBeenCalled();
+    expect(places).toHaveLength(1);
+    expect(places[0].geometryType).toBe("POINT");
+  });
+
+  it("uses geom output and keeps only matching POLYGON rows", async () => {
+    const queryBuilder: IPlaceQueryBuilder = {
+      build: vi.fn(() => "geom-query"),
+      buildGeometryQuery: vi.fn(() => "geom"),
+    };
+    const normalizer: IOsmPlaceNormalizer = {
+      normalize: vi.fn(() => []),
+      normalizeWithGeometry: vi.fn(() => [
+        makePlace({ geometryType: "POINT", id: "node/1", osmType: "node" }),
+        makePlace({
+          geometryType: "POLYGON",
+          id: "way/2",
+          osmId: 2,
+          osmType: "way",
+        }),
+        makePlace({
+          geometryType: "MULTIPOLYGON",
+          id: "relation/3",
+          osmId: 3,
+          osmType: "relation",
+        }),
+      ]),
+    };
+    const { service } = createService({ normalizer, queryBuilder });
+
+    const places = await service.exportByGeometry(baseCriteria, "POLYGON");
+
+    expect(queryBuilder.build).toHaveBeenCalledWith(
+      baseCriteria,
+      expect.anything(),
+      "geom",
+    );
+    expect(normalizer.normalizeWithGeometry).toHaveBeenCalled();
+    expect(normalizer.normalize).not.toHaveBeenCalled();
+    expect(places).toHaveLength(1);
+    expect(places[0].id).toBe("way/2");
   });
 });
 

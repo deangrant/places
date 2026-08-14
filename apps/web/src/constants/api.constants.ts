@@ -5,7 +5,7 @@ export const OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter";
 export const NOMINATIM_ENDPOINT = "https://nominatim.openstreetmap.org/search";
 
 /** Soft cap on Overpass result elements. */
-export const RESULT_LIMIT = 5000;
+export const RESULT_LIMIT = 2500;
 
 /** Overpass server-side timeout in seconds. */
 export const OVERPASS_TIMEOUT_SECONDS = 300;

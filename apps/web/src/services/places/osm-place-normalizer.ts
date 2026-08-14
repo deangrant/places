@@ -1,6 +1,10 @@
 import type { ICategoryMatcher } from "@/services/taxonomy/category-taxonomy";
 import type { OsmElement, Place } from "@/types/places.types";
-import { normalizeOsmCenterPoint } from "@/utils/osm-geometry";
+import type { NormalizedOsmGeometry } from "@/utils/osm-geometry";
+import {
+  normalizeOsmCenterPoint,
+  normalizeOsmGeometry,
+} from "@/utils/osm-geometry";
 
 /**
  * Maps raw OSM Overpass elements into Places DTOs.
@@ -8,10 +12,20 @@ import { normalizeOsmCenterPoint } from "@/utils/osm-geometry";
 export interface IOsmPlaceNormalizer {
   /**
    * Normalizes a list of OSM elements into Places with coordinates.
+   * Uses center-point geometry (`out center`).
    * @param elements Overpass elements.
    * @param context Optional search-context address fallbacks.
    */
   normalize: (
+    elements: OsmElement[],
+    context?: PlaceNormalizeContext,
+  ) => Place[];
+  /**
+   * Normalizes Overpass elements using full footprints (`out geom`).
+   * @param elements Overpass elements printed with geometry.
+   * @param context Optional search-context address fallbacks.
+   */
+  normalizeWithGeometry: (
     elements: OsmElement[],
     context?: PlaceNormalizeContext,
   ) => Place[];
@@ -47,9 +61,31 @@ export class OsmPlaceNormalizer implements IOsmPlaceNormalizer {
     elements: OsmElement[],
     context: PlaceNormalizeContext = {},
   ): Place[] {
+    return this.normalizeAll(elements, context, normalizeOsmCenterPoint);
+  }
+
+  /** @inheritdoc */
+  normalizeWithGeometry(
+    elements: OsmElement[],
+    context: PlaceNormalizeContext = {},
+  ): Place[] {
+    return this.normalizeAll(elements, context, normalizeOsmGeometry);
+  }
+
+  /**
+   * Maps elements through a geometry normalizer into Place DTOs.
+   * @param elements Overpass elements.
+   * @param context Search-context fallbacks.
+   * @param geometryOf Geometry extractor for the print mode.
+   */
+  private normalizeAll(
+    elements: OsmElement[],
+    context: PlaceNormalizeContext,
+    geometryOf: (element: OsmElement) => NormalizedOsmGeometry | null,
+  ): Place[] {
     const places: Place[] = [];
     for (const element of elements) {
-      const place = this.normalizeOne(element, context);
+      const place = this.normalizeOne(element, context, geometryOf);
       if (place) {
         places.push(place);
       }
@@ -61,12 +97,14 @@ export class OsmPlaceNormalizer implements IOsmPlaceNormalizer {
    * Converts a single OSM element when it has usable geometry.
    * @param element Overpass element.
    * @param context Search-context fallbacks.
+   * @param geometryOf Geometry extractor for the print mode.
    */
   private normalizeOne(
     element: OsmElement,
     context: PlaceNormalizeContext,
+    geometryOf: (element: OsmElement) => NormalizedOsmGeometry | null,
   ): Place | null {
-    const geometry = normalizeOsmCenterPoint(element);
+    const geometry = geometryOf(element);
     if (!geometry) {
       return null;
     }

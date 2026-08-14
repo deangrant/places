@@ -37,6 +37,19 @@ export interface PlaceGeometryUpdate {
  */
 export interface IPlaceSearchService {
   /**
+   * Re-runs the current criteria for CSV export with the chosen geometry type.
+   * POINT uses `out center`; POLYGON/MULTIPOLYGON use `out geom` and keep
+   * only matching footprints. Does not mutate session state.
+   * @param criteria Active search filters.
+   * @param geometryType Effective export geometry type.
+   * @param signal Optional abort signal.
+   */
+  exportByGeometry: (
+    criteria: PlaceSearchCriteria,
+    geometryType: PlaceGeometryType,
+    signal?: AbortSignal,
+  ) => Promise<Place[]>;
+  /**
    * Fetches full `out geom` for a single OSM way or relation.
    * @param osmType OSM element type.
    * @param osmId OSM numeric id.
@@ -93,7 +106,7 @@ export class PlaceSearchService implements IPlaceSearchService {
     this.assertHasFilters(criteria);
 
     const scope = await this.resolveScope(criteria, signal);
-    const query = this.queryBuilder.build(criteria, scope);
+    const query = this.queryBuilder.build(criteria, scope, "center");
     const response = await this.overpass.query(query, signal);
 
     const remark = describeOverpassRemark(response.remark);
@@ -112,6 +125,41 @@ export class PlaceSearchService implements IPlaceSearchService {
       scope,
       truncated: response.elements.length >= RESULT_LIMIT,
     };
+  }
+
+  /** @inheritdoc */
+  async exportByGeometry(
+    criteria: PlaceSearchCriteria,
+    geometryType: PlaceGeometryType,
+    signal?: AbortSignal,
+  ): Promise<Place[]> {
+    this.assertHasFilters(criteria);
+
+    const scope = await this.resolveScope(criteria, signal);
+    const outputMode = geometryType === "POINT" ? "center" : "geom";
+    const query = this.queryBuilder.build(criteria, scope, outputMode);
+    const response = await this.overpass.query(query, signal);
+
+    const remark = describeOverpassRemark(response.remark);
+    if (remark) {
+      throw new Error(remark);
+    }
+
+    const context = {
+      city: criteria.city,
+      isoCountryCode: criteria.countryCode,
+      region: criteria.region,
+    };
+
+    if (geometryType === "POINT") {
+      return this.normalizer.normalize(response.elements, context);
+    }
+
+    const places = this.normalizer.normalizeWithGeometry(
+      response.elements,
+      context,
+    );
+    return places.filter((place) => place.geometryType === geometryType);
   }
 
   /** @inheritdoc */
