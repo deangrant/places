@@ -4,19 +4,23 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
 } from "react";
 import { DEFAULT_MAP_VIEW } from "@/constants/api.constants";
 import { useServices } from "@/contexts/ServicesContext";
 import type {
-  BBox,
   MapViewState,
   Place,
   PlaceSearchCriteria,
 } from "@/types/places.types";
 import { boundsFromPoints } from "@/utils/geo";
 import type { PlacesContextValue, PlacesProviderProps } from "./index.types";
+import {
+  initialPlacesSessionState,
+  placesSessionReducer,
+} from "./places-session-reducer";
 
 const PlacesContext = createContext<PlacesContextValue | null>(null);
 
@@ -28,23 +32,20 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
   const [criteria, setCriteriaState] =
     useState<PlaceSearchCriteria>(initialCriteria);
   const [mapView, setMapView] = useState<MapViewState>(DEFAULT_MAP_VIEW);
-  const [places, setPlaces] = useState<Place[]>([]);
-  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [geometryLoading, setGeometryLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [truncated, setTruncated] = useState(false);
-  const [boundsToFit, setBoundsToFit] = useState<BBox | null>(null);
+  const [session, dispatch] = useReducer(
+    placesSessionReducer,
+    initialPlacesSessionState,
+  );
   const abortRef = useRef<AbortController | null>(null);
   const geometryAbortRef = useRef<AbortController | null>(null);
   const geometryRequestIdRef = useRef(0);
   const searchRequestIdRef = useRef(0);
-  const placesRef = useRef(places);
+  const placesRef = useRef(session.places);
   const placeSearchRef = useRef(placeSearch);
 
   useEffect(() => {
-    placesRef.current = places;
-  }, [places]);
+    placesRef.current = session.places;
+  }, [session.places]);
 
   useEffect(() => {
     placeSearchRef.current = placeSearch;
@@ -74,7 +75,7 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
   );
 
   const clearBoundsToFit = useCallback(() => {
-    setBoundsToFit(null);
+    dispatch({ type: "bounds/clear" });
   }, []);
 
   const fitResultsBounds = useCallback(() => {
@@ -84,29 +85,45 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
         lon: place.longitude,
       })),
     );
-    setBoundsToFit(bounds && placesRef.current.length > 0 ? bounds : null);
+    dispatch({
+      bounds: bounds && placesRef.current.length > 0 ? bounds : null,
+      type: "bounds/set",
+    });
   }, []);
 
   const selectPlace = useCallback((placeId: string | null) => {
     geometryAbortRef.current?.abort();
     geometryAbortRef.current = null;
-    setSelectedPlaceId(placeId);
-    setGeometryLoading(false);
 
     if (!placeId) {
+      dispatch({ type: "select/clear" });
       return;
     }
 
     const place = placesRef.current.find((entry) => entry.id === placeId);
     if (!place) {
+      dispatch({
+        bounds: null,
+        hydrate: false,
+        placeId,
+        type: "select/place",
+      });
       return;
     }
 
-    setBoundsToFit(
-      boundsFromPoints([{ lat: place.latitude, lon: place.longitude }], 0.0004),
+    const bounds = boundsFromPoints(
+      [{ lat: place.latitude, lon: place.longitude }],
+      0.0004,
     );
+    const hydrate = needsGeometryHydration(place);
+    dispatch({
+      bounds,
+      hydrate,
+      placeId,
+      type: "select/place",
+    });
 
-    if (!needsGeometryHydration(place)) {
+    if (!hydrate) {
       return;
     }
 
@@ -114,8 +131,6 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
     geometryRequestIdRef.current = requestId;
     const controller = new AbortController();
     geometryAbortRef.current = controller;
-    setError(null);
-    setGeometryLoading(true);
 
     placeSearchRef.current
       .fetchPlaceGeometry(place.osmType, place.osmId, controller.signal)
@@ -127,23 +142,17 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
           return;
         }
         if (!update) {
-          setError("Could not load the place footprint. Try another place.");
+          dispatch({
+            message: "Could not load the place footprint. Try another place.",
+            type: "geometry/failed",
+          });
           return;
         }
-        setPlaces((prev) =>
-          prev.map((entry) =>
-            entry.id === placeId
-              ? {
-                  ...entry,
-                  geometry: update.geometry,
-                  geometryType: update.geometryType,
-                  geometryWkt: update.geometryWkt,
-                  latitude: update.latitude,
-                  longitude: update.longitude,
-                }
-              : entry,
-          ),
-        );
+        dispatch({
+          placeId,
+          type: "geometry/succeeded",
+          update,
+        });
       })
       .catch((hydrationError: unknown) => {
         if (
@@ -156,17 +165,18 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
           hydrationError instanceof Error
             ? hydrationError.message
             : "Could not load the place footprint. Try again.";
-        setError(message);
+        dispatch({ message, type: "geometry/failed" });
       })
       .finally(() => {
         if (geometryRequestIdRef.current === requestId) {
-          setGeometryLoading(false);
+          dispatch({ type: "geometry/settled" });
         }
       });
   }, []);
 
   const selectedPlace =
-    places.find((place) => place.id === selectedPlaceId) ?? null;
+    session.places.find((place) => place.id === session.selectedPlaceId) ??
+    null;
 
   const runSearch = useCallback(async () => {
     abortRef.current?.abort();
@@ -175,13 +185,7 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
     searchRequestIdRef.current = requestId;
     const controller = new AbortController();
     abortRef.current = controller;
-    setLoading(true);
-    setGeometryLoading(false);
-    setError(null);
-    setPlaces([]);
-    setSelectedPlaceId(null);
-    setBoundsToFit(null);
-    setTruncated(false);
+    dispatch({ type: "search/started" });
 
     try {
       const result = await placeSearchRef.current.search(
@@ -191,9 +195,6 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
       if (searchRequestIdRef.current !== requestId) {
         return;
       }
-      setPlaces(result.places);
-      setTruncated(result.truncated);
-      setSelectedPlaceId(null);
 
       const bounds = boundsFromPoints(
         result.places.map((place) => ({
@@ -201,7 +202,12 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
           lon: place.longitude,
         })),
       );
-      setBoundsToFit(bounds && result.places.length > 0 ? bounds : null);
+      dispatch({
+        bounds: bounds && result.places.length > 0 ? bounds : null,
+        places: result.places,
+        truncated: result.truncated,
+        type: "search/succeeded",
+      });
     } catch (searchError) {
       if (
         searchRequestIdRef.current !== requestId ||
@@ -213,53 +219,49 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
         searchError instanceof Error
           ? searchError.message
           : "Search failed. Try again.";
-      setError(message);
-      setPlaces([]);
-      setSelectedPlaceId(null);
-      setBoundsToFit(null);
-      setTruncated(false);
+      dispatch({ message, type: "search/failed" });
     } finally {
-      setLoading((current) =>
-        searchRequestIdRef.current === requestId ? false : current,
-      );
+      if (searchRequestIdRef.current === requestId) {
+        dispatch({ type: "search/finished" });
+      }
     }
   }, [criteria]);
 
   const value = useMemo(
     (): PlacesContextValue => ({
-      boundsToFit,
+      boundsToFit: session.boundsToFit,
       clearBoundsToFit,
       criteria,
-      error,
+      error: session.error,
       fitResultsBounds,
-      geometryLoading,
-      loading,
+      geometryLoading: session.geometryLoading,
+      loading: session.loading,
       mapView,
-      places,
+      places: session.places,
       runSearch,
       selectedPlace,
-      selectedPlaceId,
+      selectedPlaceId: session.selectedPlaceId,
       selectPlace,
       setCriteria,
       setMapView,
-      truncated,
+      truncated: session.truncated,
     }),
     [
-      boundsToFit,
       clearBoundsToFit,
       criteria,
-      error,
       fitResultsBounds,
-      geometryLoading,
-      loading,
       mapView,
-      places,
       runSearch,
       selectedPlace,
-      selectedPlaceId,
       selectPlace,
+      session.boundsToFit,
+      session.error,
+      session.geometryLoading,
+      session.loading,
+      session.places,
+      session.selectedPlaceId,
+      session.truncated,
       setCriteria,
-      truncated,
     ],
   );
 

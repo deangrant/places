@@ -2,7 +2,7 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   MouseEvent as ReactMouseEvent,
 } from "react";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useId, useState } from "react";
 import { Input } from "@/components/core/Input";
 import styles from "./index.module.css";
 import type { AutocompleteProps, SuggestionItemProps } from "./index.types";
@@ -22,15 +22,12 @@ export function Autocomplete({
   const [activeIndex, setActiveIndex] = useState(-1);
 
   const menuOpen = open && suggestions.length > 0;
+  const activeOptionIndex =
+    activeIndex >= 0 && activeIndex < suggestions.length ? activeIndex : -1;
   const activeOptionId =
-    menuOpen && activeIndex >= 0 ? optionId(listId, activeIndex) : undefined;
-
-  useEffect(() => {
-    setActiveIndex(-1);
-    if (suggestions.length === 0) {
-      setOpen(false);
-    }
-  }, [suggestions]);
+    menuOpen && activeOptionIndex >= 0
+      ? optionId(listId, activeOptionIndex)
+      : undefined;
 
   const handleChange = useCallback(
     (next: string) => {
@@ -75,10 +72,10 @@ export function Autocomplete({
           return;
         }
         case "Enter": {
-          if (!(open && activeIndex >= 0)) {
+          if (!(open && activeOptionIndex >= 0)) {
             return;
           }
-          const suggestion = suggestions[activeIndex];
+          const suggestion = suggestions[activeOptionIndex];
           if (!suggestion) {
             return;
           }
@@ -91,7 +88,7 @@ export function Autocomplete({
         }
       }
     },
-    [activeIndex, closeMenu, handleSelect, open, suggestions],
+    [activeOptionIndex, closeMenu, handleSelect, open, suggestions],
   );
 
   return (
@@ -113,7 +110,7 @@ export function Autocomplete({
         <div className={styles.list} id={listId} role="listbox">
           {suggestions.map((suggestion, index) => (
             <SuggestionItem
-              active={index === activeIndex}
+              active={index === activeOptionIndex}
               id={optionId(listId, index)}
               key={suggestion}
               onSelect={handleSelect}
@@ -159,7 +156,7 @@ function moveActive(
   setOpen(true);
   const last = suggestions.length - 1;
   setActiveIndex((current) => {
-    if (!open || current < 0) {
+    if (!open || current < 0 || current > last) {
       return delta > 0 ? 0 : last;
     }
     return Math.min(Math.max(current + delta, 0), last);
