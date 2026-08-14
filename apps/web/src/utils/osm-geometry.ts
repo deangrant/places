@@ -249,9 +249,13 @@ function pointInRing(point: LonLat, ring: LonLat[]): boolean {
     const yi = ring[i].lat;
     const xj = ring[j].lon;
     const yj = ring[j].lat;
+    // Horizontal edges never cross a horizontal ray; skip to avoid divide-by-near-zero.
+    if (Math.abs(yj - yi) <= CLOSED_EPSILON) {
+      continue;
+    }
     const intersect =
       yi > point.lat !== yj > point.lat &&
-      point.lon < ((xj - xi) * (point.lat - yi)) / (yj - yi + 0.0) + xi;
+      point.lon < ((xj - xi) * (point.lat - yi)) / (yj - yi) + xi;
     if (intersect) {
       inside = !inside;
     }
