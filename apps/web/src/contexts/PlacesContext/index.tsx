@@ -203,6 +203,7 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
       setPlaces([]);
       setSelectedPlaceId(null);
       setBoundsToFit(null);
+      setTruncated(false);
     } finally {
       setLoading((current) =>
         searchRequestIdRef.current === requestId ? false : current,
