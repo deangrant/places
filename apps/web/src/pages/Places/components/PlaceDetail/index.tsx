@@ -2,7 +2,9 @@ import { useCallback } from "react";
 import { Badge } from "@/components/core/Badge";
 import { Button } from "@/components/core/Button";
 import { usePlaces } from "@/contexts/PlacesContext";
+import { osmPermalink } from "@/utils/osm-permalink";
 import { safeHttpUrl } from "@/utils/safe-http-url";
+import { safeTelHref } from "@/utils/safe-tel-href";
 import styles from "./index.module.css";
 import type { DetailProps } from "./index.types";
 
@@ -17,6 +19,8 @@ export function PlaceDetail() {
   if (!selectedPlace) {
     return null;
   }
+
+  const osmRef = `${selectedPlace.osmType}/${selectedPlace.osmId}`;
 
   return (
     <div className={styles.root}>
@@ -48,8 +52,22 @@ export function PlaceDetail() {
         <Detail label="Region" value={selectedPlace.region} />
         <Detail label="Postal" value={selectedPlace.postalCode} />
         <Detail label="Country" value={selectedPlace.isoCountryCode} />
-        <Detail label="Phone" value={selectedPlace.phoneNumber} />
-        <Detail isLink label="Website" value={selectedPlace.website} />
+        <Detail
+          href={
+            selectedPlace.phoneNumber
+              ? safeTelHref(selectedPlace.phoneNumber)
+              : null
+          }
+          label="Phone"
+          value={selectedPlace.phoneNumber}
+        />
+        <Detail
+          href={
+            selectedPlace.website ? safeHttpUrl(selectedPlace.website) : null
+          }
+          label="Website"
+          value={selectedPlace.website}
+        />
         <Detail label="Hours" value={selectedPlace.openHours} />
         <Detail
           label="Geometry"
@@ -61,22 +79,30 @@ export function PlaceDetail() {
           label="Coordinates"
           value={`${selectedPlace.latitude.toFixed(5)}, ${selectedPlace.longitude.toFixed(5)}`}
         />
+        <Detail
+          href={osmPermalink(selectedPlace.osmType, selectedPlace.osmId)}
+          label="OpenStreetMap"
+          value={osmRef}
+        />
       </dl>
     </div>
   );
 }
 
-function Detail({ label, value, isLink = false }: DetailProps) {
+function Detail({ label, value, href = null }: DetailProps) {
   if (!value) {
     return null;
   }
-  const href = isLink ? safeHttpUrl(value) : null;
+  const isTel = href?.startsWith("tel:") ?? false;
   return (
     <div className={styles.row}>
       <dt>{label}</dt>
       <dd>
         {href ? (
-          <a href={href} rel="noopener noreferrer" target="_blank">
+          <a
+            href={href}
+            {...(isTel ? {} : { rel: "noopener noreferrer", target: "_blank" })}
+          >
             {value}
           </a>
         ) : (
