@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { Badge } from "@/components/core/Badge";
 import { Button } from "@/components/core/Button";
 import { usePlaces } from "@/contexts/PlacesContext";
+import { safeHttpUrl } from "@/utils/safe-http-url";
 import styles from "./index.module.css";
 import type { DetailProps } from "./index.types";
 
@@ -69,12 +70,13 @@ function Detail({ label, value, isLink = false }: DetailProps) {
   if (!value) {
     return null;
   }
+  const href = isLink ? safeHttpUrl(value) : null;
   return (
     <div className={styles.row}>
       <dt>{label}</dt>
       <dd>
-        {isLink ? (
-          <a href={value} rel="noreferrer" target="_blank">
+        {href ? (
+          <a href={href} rel="noopener noreferrer" target="_blank">
             {value}
           </a>
         ) : (
