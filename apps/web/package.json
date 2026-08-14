@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@fontsource/sora": "catalog:",
     "mapbox-gl": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"

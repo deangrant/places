@@ -25,24 +25,6 @@
   color-scheme: dark;
 }
 
-@font-face {
-  font-family: "Sora";
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url("https://cdn.jsdelivr.net/fontsource/fonts/sora@latest/latin-400-normal.woff2")
-    format("woff2");
-}
-
-@font-face {
-  font-family: "Sora";
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("https://cdn.jsdelivr.net/fontsource/fonts/sora@latest/latin-600-normal.woff2")
-    format("woff2");
-}
-
 *,
 *::before,
 *::after {
