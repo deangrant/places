@@ -20,6 +20,7 @@ cp apps/web/.env.example apps/web/.env
 ```
 
 The token must allow your app origin(s) under Mapbox [URL restrictions](https://docs.mapbox.com/accounts/guides/tokens/#url-restrictions). For local development, include `http://localhost:5173`. Add each preview and production HTTPS origin the same way when you deploy.
+
 ## Develop
 
 ```bash
@@ -35,12 +36,21 @@ pnpm build
 pnpm preview
 ```
 
+## Test
+
+```bash
+pnpm test
+```
+
+CI runs `pnpm test` and `pnpm build` on every pull request (see `.github/workflows/verify.yml`).
+
 ## Scripts
 
 | Script | Description |
 | --- | --- |
 | `pnpm dev` | Start the Places Vite dev server |
 | `pnpm build` | Typecheck and build `apps/web` |
+| `pnpm test` | Run Vitest unit tests for `apps/web` |
 | `pnpm check` | Run Biome check (format + lint) |
 | `pnpm doctor` | Run React Doctor |
 

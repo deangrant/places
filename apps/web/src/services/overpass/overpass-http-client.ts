@@ -84,6 +84,7 @@ export class OverpassHttpClient implements IOverpassClient {
       if (isOverpassPlainTextError(text)) {
         throw new OverpassError(
           "Overpass rejected the query. Narrow the area or simplify filters.",
+          { cause: error },
         );
       }
       throw new OverpassError(

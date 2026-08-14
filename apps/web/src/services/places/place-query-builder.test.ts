@@ -1,0 +1,88 @@
+import { describe, expect, it } from "vitest";
+import {
+  PlaceQueryBuilder,
+  toOverpassAreaId,
+} from "@/services/places/place-query-builder";
+import type { ICategoryLookup } from "@/services/taxonomy/category-taxonomy";
+import type { CategoryDefinition } from "@/types/places.types";
+
+const NODE_TYPE_ERROR = /relation or way/i;
+const MISSING_SCOPE_ERROR = /area or bounding box/i;
+
+const coffee: CategoryDefinition = {
+  id: "coffee-shops",
+  subCategory: "Coffee Shops",
+  tags: [
+    { key: "amenity", value: "cafe" },
+    { key: "amenity", value: 'cof"fee' },
+  ],
+  topCategory: "Food Services",
+};
+
+const taxonomy: ICategoryLookup = {
+  getById: (id) => (id === coffee.id ? coffee : undefined),
+  list: () => [coffee],
+};
+
+describe("toOverpassAreaId", () => {
+  it("offsets relation and way ids", () => {
+    expect(toOverpassAreaId("relation", 123)).toBe(3_600_000_123);
+    expect(toOverpassAreaId("R", 1)).toBe(3_600_000_001);
+    expect(toOverpassAreaId("way", 10)).toBe(2_400_000_010);
+    expect(toOverpassAreaId("W", 2)).toBe(2_400_000_002);
+  });
+
+  it("rejects node types", () => {
+    expect(() => toOverpassAreaId("node", 1)).toThrow(NODE_TYPE_ERROR);
+  });
+});
+
+describe("PlaceQueryBuilder", () => {
+  const builder = new PlaceQueryBuilder(taxonomy);
+
+  it("emits area preamble and searchArea filter for area-id scope", () => {
+    const ql = builder.build(
+      { brand: "Starbucks", categoryId: "coffee-shops" },
+      { areaId: 3_600_000_001 },
+    );
+    expect(ql).toContain("area(3600000001)->.searchArea;");
+    expect(ql).toContain("(area.searchArea)");
+    expect(ql).not.toContain("undefined");
+  });
+
+  it("uses bbox when areaId is omitted", () => {
+    const ql = builder.build(
+      { nameContains: "cafe" },
+      { bbox: { east: 1, north: 2, south: 0, west: -1 } },
+    );
+    expect(ql).not.toContain("area(");
+    expect(ql).toContain("(0,-1,2,1)");
+  });
+
+  it("throws when spatial scope has neither area nor bbox", () => {
+    expect(() => builder.build({ brand: "X" }, {})).toThrow(
+      MISSING_SCOPE_ERROR,
+    );
+  });
+
+  it("escapes Overpass string and regex metacharacters", () => {
+    const ql = builder.build(
+      {
+        brand: "A.B*C?",
+        categoryId: "coffee-shops",
+        nameContains: "foo.bar",
+      },
+      { areaId: 1 },
+    );
+    expect(ql).toContain('["brand"~"^A\\.B\\*C\\?$",i]');
+    expect(ql).toContain('["name"~"foo\\.bar",i]');
+    expect(ql).toContain('nwr["amenity"="cof\\"fee"]');
+  });
+
+  it("builds a geometry query for ways and relations", () => {
+    expect(builder.buildGeometryQuery("way", 42)).toBe(
+      "[out:json][timeout:500];\nway(42);\nout geom;",
+    );
+    expect(builder.buildGeometryQuery("relation", 7)).toContain("relation(7);");
+  });
+});

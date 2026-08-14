@@ -28,7 +28,8 @@
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
     "lint:lockfile": "pnpm install --frozen-lockfile",
-    "preview": "pnpm --filter web preview"
+    "preview": "pnpm --filter web preview",
+    "test": "pnpm --filter web test"
   },
   "type": "module",
   "version": "1.0.0"

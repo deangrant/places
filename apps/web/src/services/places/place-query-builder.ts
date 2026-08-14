@@ -81,7 +81,7 @@ export class PlaceQueryBuilder implements IPlaceQueryBuilder {
    * @param scope Resolved spatial scope.
    */
   private formatAreaPreamble(scope: SpatialScope): string {
-    if (scope.areaId == null) {
+    if (typeof scope.areaId !== "number") {
       return "";
     }
     // Nominatim OSM ids become Overpass area ids with the standard offset.
@@ -93,7 +93,7 @@ export class PlaceQueryBuilder implements IPlaceQueryBuilder {
    * @param scope Resolved spatial scope.
    */
   private formatSpatialFilter(scope: SpatialScope): string {
-    if (scope.areaId != null) {
+    if (typeof scope.areaId === "number") {
       return "(area.searchArea)";
     }
     if (scope.bbox) {
