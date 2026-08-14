@@ -9,7 +9,7 @@ export interface FormFieldProps {
   /** Optional helper text under the control. */
   hint?: string;
   /** `htmlFor` linked to the control id. */
-  htmlFor?: string;
+  htmlFor: string;
   /** Visible field label. */
   label: string;
 }

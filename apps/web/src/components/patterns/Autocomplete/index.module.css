@@ -32,6 +32,7 @@
 }
 
 .item:hover,
-.item:focus {
+.item:focus,
+.itemActive {
   background: var(--color-accent-soft);
 }

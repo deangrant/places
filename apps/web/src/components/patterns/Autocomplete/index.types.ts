@@ -19,11 +19,15 @@ export interface AutocompleteProps {
 }
 
 /**
- * Props for one suggestion button in the Autocomplete menu.
+ * Props for one suggestion option in the Autocomplete listbox.
  */
 export interface SuggestionItemProps {
+  /** True when this option is the keyboard-highlighted active descendant. */
+  active: boolean;
+  /** DOM id used for `aria-activedescendant`. */
+  id: string;
   /** Called with the suggestion text when activated. */
   onSelect: (suggestion: string) => void;
-  /** Suggestion label rendered as the button text. */
+  /** Suggestion label rendered as the option text. */
   suggestion: string;
 }

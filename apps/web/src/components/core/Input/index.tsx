@@ -13,6 +13,11 @@ export function Input({
   type = "text",
   autoComplete,
   list,
+  role,
+  "aria-expanded": ariaExpanded,
+  "aria-controls": ariaControls,
+  "aria-autocomplete": ariaAutocomplete,
+  "aria-activedescendant": ariaActivedescendant,
 }: InputProps) {
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -23,6 +28,10 @@ export function Input({
 
   return (
     <input
+      aria-activedescendant={ariaActivedescendant}
+      aria-autocomplete={ariaAutocomplete}
+      aria-controls={ariaControls}
+      aria-expanded={ariaExpanded}
       autoComplete={autoComplete}
       className={styles.root}
       disabled={disabled}
@@ -31,6 +40,7 @@ export function Input({
       onChange={handleChange}
       onKeyDown={onKeyDown}
       placeholder={placeholder}
+      role={role}
       type={type}
       value={value}
     />

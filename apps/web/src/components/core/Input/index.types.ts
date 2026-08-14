@@ -4,6 +4,14 @@ import type { KeyboardEvent } from "react";
  * Props for the shared text Input core control.
  */
 export interface InputProps {
+  /** Active option id for combobox `aria-activedescendant`. */
+  "aria-activedescendant"?: string;
+  /** Combobox autocomplete behavior announced to assistive tech. */
+  "aria-autocomplete"?: "list" | "none";
+  /** Id of the controlled listbox for combobox inputs. */
+  "aria-controls"?: string;
+  /** Whether an associated popup (e.g. listbox) is expanded. */
+  "aria-expanded"?: boolean;
   /** Browser autocomplete hint. */
   autoComplete?: string;
   /** Disables editing. */
@@ -18,6 +26,8 @@ export interface InputProps {
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
   /** Placeholder shown when the value is empty. */
   placeholder?: string;
+  /** Explicit ARIA role when used as a combobox. */
+  role?: "combobox";
   /** Native input type; defaults to `text`. */
   type?: "text" | "search";
   /** Controlled input value. */
