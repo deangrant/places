@@ -24,7 +24,7 @@ export interface PlacesContextValue {
   clearBoundsToFit: () => void;
   /** Active search filter criteria. */
   criteria: PlaceSearchCriteria;
-  /** Last search error message, or null when none. */
+  /** Last search or geometry-hydration error message, or null when none. */
   error: string | null;
   /** Fits the map to the current result set centroids. */
   fitResultsBounds: () => void;

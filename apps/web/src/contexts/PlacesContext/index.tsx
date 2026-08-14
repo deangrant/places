@@ -104,6 +104,7 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
     geometryRequestIdRef.current = requestId;
     const controller = new AbortController();
     geometryAbortRef.current = controller;
+    setError(null);
     setGeometryLoading(true);
 
     placeSearchRef.current
@@ -111,9 +112,12 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
       .then((update) => {
         if (
           geometryRequestIdRef.current !== requestId ||
-          controller.signal.aborted ||
-          !update
+          controller.signal.aborted
         ) {
+          return;
+        }
+        if (!update) {
+          setError("Could not load the place footprint. Try another place.");
           return;
         }
         setPlaces((prev) =>
@@ -131,7 +135,19 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
           ),
         );
       })
-      .catch(() => undefined)
+      .catch((hydrationError: unknown) => {
+        if (
+          geometryRequestIdRef.current !== requestId ||
+          controller.signal.aborted
+        ) {
+          return;
+        }
+        const message =
+          hydrationError instanceof Error
+            ? hydrationError.message
+            : "Could not load the place footprint. Try again.";
+        setError(message);
+      })
       .finally(() => {
         if (geometryRequestIdRef.current === requestId) {
           setGeometryLoading(false);
