@@ -10,7 +10,7 @@ import type { DetailProps } from "./index.types";
 
 /** Detail pane for the selected Place record. */
 export function PlaceDetail() {
-  const { selectedPlace, selectPlace, geometryLoading } = usePlaces();
+  const { selectedPlace, selectPlace } = usePlaces();
 
   const handleBack = useCallback(() => {
     selectPlace(null);
@@ -69,12 +69,7 @@ export function PlaceDetail() {
           value={selectedPlace.website}
         />
         <Detail label="Hours" value={selectedPlace.openHours} />
-        <Detail
-          label="Geometry"
-          value={
-            geometryLoading ? "Loading footprint…" : selectedPlace.geometryType
-          }
-        />
+        <Detail label="Geometry" value={selectedPlace.geometryType} />
         <Detail
           label="Coordinates"
           value={`${selectedPlace.latitude.toFixed(5)}, ${selectedPlace.longitude.toFixed(5)}`}

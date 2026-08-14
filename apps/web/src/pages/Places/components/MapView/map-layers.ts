@@ -10,10 +10,6 @@ export const MARKER_CLUSTER_LARGE_COLOR = "#24634e";
 export const MARKER_STROKE_COLOR = "#ffffff";
 /** Soft halo color behind unclustered markers. */
 export const MARKER_HALO_COLOR = "rgba(15, 26, 23, 0.22)";
-/** Fill color for unselected place footprints. */
-export const FOOTPRINT_FILL = "rgba(61, 155, 122, 0.22)";
-/** Fill color for the selected place footprint. */
-export const FOOTPRINT_FILL_SELECTED = "rgba(47, 125, 98, 0.35)";
 
 /** GeoJSON source id for clustered place points. */
 export const PLACES_SOURCE_ID = "places";
@@ -27,12 +23,6 @@ export const PLACES_CLUSTER_COUNT_LAYER_ID = "places-cluster-count";
 export const PLACES_HALO_LAYER_ID = "places-halo";
 /** Unclustered place circle layer id. */
 export const PLACES_LAYER_ID = "places-circle";
-/** GeoJSON source id for place footprint polygons. */
-export const FOOTPRINTS_SOURCE_ID = "footprints";
-/** Footprint polygon fill layer id. */
-export const FOOTPRINTS_FILL_LAYER_ID = "footprints-fill";
-/** Footprint polygon outline layer id. */
-export const FOOTPRINTS_LINE_LAYER_ID = "footprints-line";
 
 const UNCLUSTERED_POINT_FILTER: FilterSpecification = [
   "!",
@@ -41,7 +31,7 @@ const UNCLUSTERED_POINT_FILTER: FilterSpecification = [
 const CLUSTER_FILTER: FilterSpecification = ["has", "point_count"];
 
 /**
- * Registers clustered places + footprint sources and layers on a loaded map.
+ * Registers clustered place point sources and layers on a loaded map.
  * @param map Mapbox map instance after style load.
  */
 export function addPlacesMapLayers(map: MapboxMap): void {
@@ -51,38 +41,6 @@ export function addPlacesMapLayers(map: MapboxMap): void {
     clusterRadius: 56,
     data: { features: [], type: "FeatureCollection" },
     type: "geojson",
-  });
-  map.addSource(FOOTPRINTS_SOURCE_ID, {
-    data: { features: [], type: "FeatureCollection" },
-    type: "geojson",
-  });
-
-  map.addLayer({
-    id: FOOTPRINTS_FILL_LAYER_ID,
-    paint: {
-      "fill-color": [
-        "case",
-        ["boolean", ["get", "selected"], false],
-        FOOTPRINT_FILL_SELECTED,
-        FOOTPRINT_FILL,
-      ],
-    },
-    source: FOOTPRINTS_SOURCE_ID,
-    type: "fill",
-  });
-  map.addLayer({
-    id: FOOTPRINTS_LINE_LAYER_ID,
-    paint: {
-      "line-color": [
-        "case",
-        ["boolean", ["get", "selected"], false],
-        MARKER_SELECTED_COLOR,
-        MARKER_COLOR,
-      ],
-      "line-width": 1.5,
-    },
-    source: FOOTPRINTS_SOURCE_ID,
-    type: "line",
   });
 
   map.addLayer({

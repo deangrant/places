@@ -10,11 +10,7 @@ import {
 } from "react";
 import { DEFAULT_MAP_VIEW } from "@/constants/api.constants";
 import { useServices } from "@/contexts/ServicesContext";
-import type {
-  MapViewState,
-  Place,
-  PlaceSearchCriteria,
-} from "@/types/places.types";
+import type { MapViewState, PlaceSearchCriteria } from "@/types/places.types";
 import { boundsFromPoints } from "@/utils/geo";
 import type { PlacesContextValue, PlacesProviderProps } from "./index.types";
 import {
@@ -37,8 +33,6 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
     initialPlacesSessionState,
   );
   const abortRef = useRef<AbortController | null>(null);
-  const geometryAbortRef = useRef<AbortController | null>(null);
-  const geometryRequestIdRef = useRef(0);
   const searchRequestIdRef = useRef(0);
   const placesRef = useRef(session.places);
   const placeSearchRef = useRef(placeSearch);
@@ -54,9 +48,7 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
   useEffect(
     () => () => {
       abortRef.current?.abort();
-      geometryAbortRef.current?.abort();
       searchRequestIdRef.current += 1;
-      geometryRequestIdRef.current += 1;
     },
     [],
   );
@@ -92,9 +84,6 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
   }, []);
 
   const selectPlace = useCallback((placeId: string | null) => {
-    geometryAbortRef.current?.abort();
-    geometryAbortRef.current = null;
-
     if (!placeId) {
       dispatch({ type: "select/clear" });
       return;
@@ -115,63 +104,12 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
       [{ lat: place.latitude, lon: place.longitude }],
       0.0004,
     );
-    const hydrate = needsGeometryHydration(place);
     dispatch({
       bounds,
-      hydrate,
+      hydrate: false,
       placeId,
       type: "select/place",
     });
-
-    if (!hydrate) {
-      return;
-    }
-
-    const requestId = geometryRequestIdRef.current + 1;
-    geometryRequestIdRef.current = requestId;
-    const controller = new AbortController();
-    geometryAbortRef.current = controller;
-
-    placeSearchRef.current
-      .fetchPlaceGeometry(place.osmType, place.osmId, controller.signal)
-      .then((update) => {
-        if (
-          geometryRequestIdRef.current !== requestId ||
-          controller.signal.aborted
-        ) {
-          return;
-        }
-        if (!update) {
-          dispatch({
-            message: "Could not load the place footprint. Try another place.",
-            type: "geometry/failed",
-          });
-          return;
-        }
-        dispatch({
-          placeId,
-          type: "geometry/succeeded",
-          update,
-        });
-      })
-      .catch((hydrationError: unknown) => {
-        if (
-          geometryRequestIdRef.current !== requestId ||
-          controller.signal.aborted
-        ) {
-          return;
-        }
-        const message =
-          hydrationError instanceof Error
-            ? hydrationError.message
-            : "Could not load the place footprint. Try again.";
-        dispatch({ message, type: "geometry/failed" });
-      })
-      .finally(() => {
-        if (geometryRequestIdRef.current === requestId) {
-          dispatch({ type: "geometry/settled" });
-        }
-      });
   }, []);
 
   const selectedPlace =
@@ -180,7 +118,6 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
 
   const runSearch = useCallback(async () => {
     abortRef.current?.abort();
-    geometryAbortRef.current?.abort();
     const requestId = searchRequestIdRef.current + 1;
     searchRequestIdRef.current = requestId;
     const controller = new AbortController();
@@ -277,15 +214,4 @@ export function usePlaces(): PlacesContextValue {
     throw new Error("usePlaces must be used within PlacesProvider.");
   }
   return value;
-}
-
-/**
- * Returns whether a way or relation still needs footprint hydration after a
- * center-only search.
- */
-function needsGeometryHydration(place: Place): boolean {
-  return (
-    (place.osmType === "way" || place.osmType === "relation") &&
-    place.geometry.polygons.length === 0
-  );
 }

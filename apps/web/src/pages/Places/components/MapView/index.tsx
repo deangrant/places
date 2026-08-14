@@ -1,19 +1,19 @@
 import mapboxgl from "mapbox-gl";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MAP_WORLD_BOUNDS, MAPBOX_STYLE_URL } from "@/constants/api.constants";
+import { downloadPlacesCsv } from "@/services/export/places-csv-export";
 import type { Place } from "@/types/places.types";
 import "mapbox-gl/dist/mapbox-gl.css";
 import styles from "./index.module.css";
 import type { MapViewProps } from "./index.types";
 import {
   addPlacesMapLayers,
-  FOOTPRINTS_SOURCE_ID,
   PLACES_CLUSTERS_LAYER_ID,
   PLACES_LAYER_ID,
   PLACES_SOURCE_ID,
 } from "./map-layers";
 
-/** Mapbox GL map with clustered place markers and footprints. */
+/** Mapbox GL map with clustered place point markers. */
 export function MapView({
   view,
   places,
@@ -39,6 +39,10 @@ export function MapView({
     onSelectPlaceRef.current = onSelectPlace;
     onBoundsFittedRef.current = onBoundsFitted;
   }, [onViewChange, onSelectPlace, onBoundsFitted]);
+
+  const handleExportCsv = useCallback(() => {
+    downloadPlacesCsv(places);
+  }, [places]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -217,10 +221,7 @@ export function MapView({
 
     const applyPlaces = () => {
       const placesSource = map.getSource(PLACES_SOURCE_ID);
-      const footprintsSource = map.getSource(FOOTPRINTS_SOURCE_ID);
-      if (
-        !(isGeoJsonSource(placesSource) && isGeoJsonSource(footprintsSource))
-      ) {
+      if (!isGeoJsonSource(placesSource)) {
         return;
       }
 
@@ -229,9 +230,6 @@ export function MapView({
         : places;
 
       placesSource.setData(placesToGeoJson(visiblePlaces, selectedPlaceId));
-      footprintsSource.setData(
-        footprintsToGeoJson(visiblePlaces, selectedPlaceId),
-      );
     };
 
     if (map.isStyleLoaded()) {
@@ -260,31 +258,59 @@ export function MapView({
     <div className={styles.root}>
       <div className={styles.mapCanvas} ref={containerRef} />
       {places.length > 0 ? (
-        <button
-          aria-label="Fit results to map"
-          className={styles.fitControl}
-          onClick={onFitResults}
-          type="button"
-        >
-          <svg
-            aria-hidden="true"
-            className={styles.fitControlIcon}
-            fill="none"
-            focusable="false"
-            height="18"
-            role="presentation"
-            viewBox="0 0 24 24"
-            width="18"
+        <div className={styles.mapControls}>
+          <button
+            aria-label="Fit results to map"
+            className={styles.mapControl}
+            onClick={onFitResults}
+            type="button"
           >
-            <path
-              d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="1.75"
-            />
-          </svg>
-        </button>
+            <svg
+              aria-hidden="true"
+              className={styles.mapControlIcon}
+              fill="none"
+              focusable="false"
+              height="18"
+              role="presentation"
+              viewBox="0 0 24 24"
+              width="18"
+            >
+              <path
+                d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.75"
+              />
+            </svg>
+          </button>
+          <button
+            aria-label="Export results as CSV"
+            className={styles.mapControl}
+            onClick={handleExportCsv}
+            title="Export results as CSV"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              className={styles.mapControlIcon}
+              fill="none"
+              focusable="false"
+              height="18"
+              role="presentation"
+              viewBox="0 0 24 24"
+              width="18"
+            >
+              <path
+                d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.75"
+              />
+            </svg>
+          </button>
+        </div>
       ) : null}
     </div>
   );
@@ -313,39 +339,6 @@ function placesToGeoJson(
     })),
     type: "FeatureCollection",
   };
-}
-
-/**
- * Builds polygon features from hydrated place footprints.
- * @param places Search result places.
- * @param selectedPlaceId Currently selected place id.
- */
-function footprintsToGeoJson(
-  places: Place[],
-  selectedPlaceId: string | null,
-): GeoJSON.FeatureCollection {
-  const features: GeoJSON.Feature[] = [];
-  for (const place of places) {
-    for (const rings of place.geometry.polygons) {
-      if (rings.length === 0) {
-        continue;
-      }
-      features.push({
-        geometry: {
-          coordinates: rings.map((ring) =>
-            ring.map((point) => [point.lon, point.lat]),
-          ),
-          type: "Polygon",
-        },
-        properties: {
-          id: place.id,
-          selected: place.id === selectedPlaceId,
-        },
-        type: "Feature",
-      });
-    }
-  }
-  return { features, type: "FeatureCollection" };
 }
 
 function isGeoJsonSource(

@@ -27,11 +27,17 @@
   color: var(--color-text);
 }
 
-.fitControl {
+.mapControls {
   position: absolute;
   top: var(--space-3);
   right: var(--space-3);
   z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.mapControl {
   display: grid;
   place-items: center;
   width: 2.5rem;
@@ -50,17 +56,17 @@
     border-color 140ms ease;
 }
 
-.fitControl:hover {
+.mapControl:hover {
   color: var(--color-accent);
   background: var(--color-bg-panel);
   border-color: var(--color-accent);
 }
 
-.fitControl:focus-visible {
+.mapControl:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
-.fitControlIcon {
+.mapControlIcon {
   display: block;
 }
