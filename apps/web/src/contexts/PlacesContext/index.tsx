@@ -50,6 +50,16 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
     placeSearchRef.current = placeSearch;
   }, [placeSearch]);
 
+  useEffect(
+    () => () => {
+      abortRef.current?.abort();
+      geometryAbortRef.current?.abort();
+      searchRequestIdRef.current += 1;
+      geometryRequestIdRef.current += 1;
+    },
+    [],
+  );
+
   const setCriteria = useCallback(
     (
       patch:
@@ -168,6 +178,10 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
     setLoading(true);
     setGeometryLoading(false);
     setError(null);
+    setPlaces([]);
+    setSelectedPlaceId(null);
+    setBoundsToFit(null);
+    setTruncated(false);
 
     try {
       const result = await placeSearchRef.current.search(
