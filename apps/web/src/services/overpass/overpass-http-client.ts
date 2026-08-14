@@ -38,17 +38,25 @@ export class OverpassError extends Error {
  */
 export class OverpassHttpClient implements IOverpassClient {
   private readonly endpoint: string;
+  private readonly timeoutMs: number;
 
   /**
    * @param endpoint Overpass interpreter URL.
+   * @param timeoutMs Client-side abort budget in milliseconds.
    */
-  constructor(endpoint: string = OVERPASS_ENDPOINT) {
+  constructor(
+    endpoint: string = OVERPASS_ENDPOINT,
+    timeoutMs: number = OVERPASS_TIMEOUT_SECONDS * 1000,
+  ) {
     this.endpoint = endpoint;
+    this.timeoutMs = timeoutMs;
   }
 
   /** @inheritdoc */
   async query(query: string, signal?: AbortSignal): Promise<OverpassResponse> {
     const body = new URLSearchParams({ data: query });
+    const timeout = createTimeoutSignal(this.timeoutMs);
+    const combined = combineAbortSignals(signal, timeout.signal);
     let response: Response;
     try {
       response = await fetch(this.endpoint, {
@@ -57,16 +65,21 @@ export class OverpassHttpClient implements IOverpassClient {
           "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
         },
         method: "POST",
-        signal,
+        signal: combined,
       });
     } catch (error) {
       if (signal?.aborted) {
         throw error;
       }
+      if (timeout.signal.aborted) {
+        throw new OverpassError(overpassTimeoutMessage(), { cause: error });
+      }
       throw new OverpassError(
         "Could not reach the Overpass API. Check your network and try again.",
         { cause: error },
       );
+    } finally {
+      timeout.clear();
     }
 
     if (!response.ok) {
@@ -102,6 +115,13 @@ export class OverpassHttpClient implements IOverpassClient {
 }
 
 /**
+ * User-facing message when an Overpass query hits the soft timeout budget.
+ */
+export function overpassTimeoutMessage(): string {
+  return `Query timed out after about ${OVERPASS_TIMEOUT_SECONDS}s. Narrow the area or filters.`;
+}
+
+/**
  * True when a non-JSON Overpass body looks like an interpreter error envelope.
  * Only used after JSON.parse fails so OSM tag substrings cannot false-positive.
  * @param text Raw response body.
@@ -134,7 +154,74 @@ export function describeOverpassRemark(remark?: string): string | undefined {
     return;
   }
   if (remark.toLowerCase().includes("timeout")) {
-    return `Query timed out after about ${OVERPASS_TIMEOUT_SECONDS}s. Narrow the area or filters.`;
+    return overpassTimeoutMessage();
   }
   return remark;
+}
+
+/**
+ * Combines an optional caller signal with a timeout signal.
+ * @param caller Optional caller abort signal.
+ * @param timeout Timeout abort signal.
+ */
+function combineAbortSignals(
+  caller: AbortSignal | undefined,
+  timeout: AbortSignal,
+): AbortSignal {
+  if (!caller) {
+    return timeout;
+  }
+  if (typeof AbortSignal.any === "function") {
+    return AbortSignal.any([caller, timeout]);
+  }
+  return linkAbortSignals(caller, timeout);
+}
+
+/**
+ * Fallback when `AbortSignal.any` is unavailable: abort when either input aborts.
+ * @param caller Caller abort signal.
+ * @param timeout Timeout abort signal.
+ */
+function linkAbortSignals(
+  caller: AbortSignal,
+  timeout: AbortSignal,
+): AbortSignal {
+  const controller = new AbortController();
+  const forward = () => {
+    controller.abort();
+  };
+  if (caller.aborted || timeout.aborted) {
+    controller.abort();
+    return controller.signal;
+  }
+  caller.addEventListener("abort", forward, { once: true });
+  timeout.addEventListener("abort", forward, { once: true });
+  return controller.signal;
+}
+
+/**
+ * Creates an abort signal that fires after `timeoutMs`, with optional cleanup.
+ * @param timeoutMs Milliseconds until abort.
+ */
+function createTimeoutSignal(timeoutMs: number): {
+  clear: () => void;
+  signal: AbortSignal;
+} {
+  if (typeof AbortSignal.timeout === "function") {
+    return {
+      clear: () => undefined,
+      signal: AbortSignal.timeout(timeoutMs),
+    };
+  }
+
+  const controller = new AbortController();
+  const timerId = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+  return {
+    clear: () => {
+      clearTimeout(timerId);
+    },
+    signal: controller.signal,
+  };
 }
