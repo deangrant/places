@@ -82,13 +82,6 @@ describe("PlaceQueryBuilder", () => {
     expect(ql).toContain('nwr["amenity"="cof\\"fee"]');
   });
 
-  it("builds a geometry query for ways and relations", () => {
-    expect(builder.buildGeometryQuery("way", 42)).toBe(
-      "[out:json][timeout:300];\nway(42);\nout geom;",
-    );
-    expect(builder.buildGeometryQuery("relation", 7)).toContain("relation(7);");
-  });
-
   it("emits out center by default and out geom when requested", () => {
     const centerQl = builder.build(
       { brand: "Starbucks" },

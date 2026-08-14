@@ -11,34 +11,33 @@ import type { IPlaceQueryBuilder } from "@/services/places/place-query-builder";
 import { toOverpassAreaId } from "@/services/places/place-query-builder";
 import type {
   Place,
-  PlaceDrawableGeometry,
   PlaceGeometryType,
   PlaceSearchCriteria,
   PlaceSearchResult,
   SpatialScope,
 } from "@/types/places.types";
-import { normalizeOsmGeometry } from "@/utils/osm-geometry";
 
 /**
- * Full geometry fields hydrated after a center-only search hit.
+ * Runs Places map searches against Overpass for the given criteria.
  */
-export interface PlaceGeometryUpdate {
-  /** Drawable footprint rings for the map. */
-  geometry: PlaceDrawableGeometry;
-  /** WKT geometry class for the hydrated footprint. */
-  geometryType: PlaceGeometryType;
-  /** Well-Known Text for the hydrated footprint. */
-  geometryWkt: string;
-  /** Centroid latitude after hydration. */
-  latitude: number;
-  /** Centroid longitude after hydration. */
-  longitude: number;
+export interface IPlaceSearchService {
+  /**
+   * Runs a Places search for the given criteria.
+   * @param criteria User filters.
+   * @param signal Optional abort signal.
+   * @param onAttempt Optional Overpass endpoint progress callback.
+   */
+  search: (
+    criteria: PlaceSearchCriteria,
+    signal?: AbortSignal,
+    onAttempt?: OverpassAttemptListener,
+  ) => Promise<PlaceSearchResult>;
 }
 
 /**
- * Orchestrates geography resolution, Overpass execution, and normalization.
+ * Re-queries Places for CSV export with a chosen geometry type.
  */
-export interface IPlaceSearchService {
+export interface IPlaceGeometryExporter {
   /**
    * Re-runs the current criteria for CSV export with the chosen geometry type.
    * POINT uses `out center`; POLYGON/MULTIPOLYGON use `out geom` and keep
@@ -54,34 +53,14 @@ export interface IPlaceSearchService {
     signal?: AbortSignal,
     onAttempt?: OverpassAttemptListener,
   ) => Promise<Place[]>;
-  /**
-   * Fetches full `out geom` for a single OSM way or relation.
-   * @param osmType OSM element type.
-   * @param osmId OSM numeric id.
-   * @param signal Optional abort signal.
-   */
-  fetchPlaceGeometry: (
-    osmType: Place["osmType"],
-    osmId: number,
-    signal?: AbortSignal,
-  ) => Promise<PlaceGeometryUpdate | null>;
-  /**
-   * Runs a Places search for the given criteria.
-   * @param criteria User filters.
-   * @param signal Optional abort signal.
-   * @param onAttempt Optional Overpass endpoint progress callback.
-   */
-  search: (
-    criteria: PlaceSearchCriteria,
-    signal?: AbortSignal,
-    onAttempt?: OverpassAttemptListener,
-  ) => Promise<PlaceSearchResult>;
 }
 
 /**
- * Default Places search orchestrator.
+ * Default Places search and geometry-export orchestrator.
  */
-export class PlaceSearchService implements IPlaceSearchService {
+export class PlaceSearchService
+  implements IPlaceSearchService, IPlaceGeometryExporter
+{
   private readonly overpass: IOverpassClient;
   private readonly queryBuilder: IPlaceQueryBuilder;
   private readonly normalizer: IOsmPlaceNormalizer;
@@ -105,7 +84,12 @@ export class PlaceSearchService implements IPlaceSearchService {
     this.areaResolver = areaResolver;
   }
 
-  /** @inheritdoc */
+  /**
+   * Runs a Places search for the given criteria and returns normalized places.
+   * @param criteria User filters.
+   * @param signal Optional abort signal.
+   * @param onAttempt Optional Overpass endpoint progress callback.
+   */
   async search(
     criteria: PlaceSearchCriteria,
     signal?: AbortSignal,
@@ -135,7 +119,13 @@ export class PlaceSearchService implements IPlaceSearchService {
     };
   }
 
-  /** @inheritdoc */
+  /**
+   * Re-queries Overpass for places matching one export geometry type.
+   * @param criteria Active search filters.
+   * @param geometryType Effective export geometry type.
+   * @param signal Optional abort signal.
+   * @param onAttempt Optional Overpass endpoint progress callback.
+   */
   async exportByGeometry(
     criteria: PlaceSearchCriteria,
     geometryType: PlaceGeometryType,
@@ -169,43 +159,6 @@ export class PlaceSearchService implements IPlaceSearchService {
       context,
     );
     return places.filter((place) => place.geometryType === geometryType);
-  }
-
-  /** @inheritdoc */
-  async fetchPlaceGeometry(
-    osmType: Place["osmType"],
-    osmId: number,
-    signal?: AbortSignal,
-  ): Promise<PlaceGeometryUpdate | null> {
-    if (osmType === "node") {
-      return null;
-    }
-
-    const query = this.queryBuilder.buildGeometryQuery(osmType, osmId);
-
-    const response = await this.overpass.query(query, signal);
-    const remark = describeOverpassRemark(response.remark);
-    if (remark) {
-      throw new Error(remark);
-    }
-
-    const [element] = response.elements;
-    if (!element) {
-      return null;
-    }
-
-    const geometry = normalizeOsmGeometry(element);
-    if (!geometry) {
-      return null;
-    }
-
-    return {
-      geometry: geometry.geometry,
-      geometryType: geometry.geometryType,
-      geometryWkt: geometry.geometryWkt,
-      latitude: geometry.centroid.lat,
-      longitude: geometry.centroid.lon,
-    };
   }
 
   /**

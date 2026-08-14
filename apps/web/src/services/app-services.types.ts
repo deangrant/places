@@ -1,4 +1,7 @@
-import type { IPlaceSearchService } from "@/services/places/place-search-service";
+import type {
+  IPlaceGeometryExporter,
+  IPlaceSearchService,
+} from "@/services/places/place-search-service";
 import type { IBrandCatalog } from "@/services/taxonomy/brand-catalog";
 import type { ICategoryTaxonomy } from "@/services/taxonomy/category-taxonomy";
 
@@ -9,7 +12,9 @@ import type { ICategoryTaxonomy } from "@/services/taxonomy/category-taxonomy";
 export interface AppServices {
   /** Brand autocomplete catalog. */
   brandCatalog: IBrandCatalog;
-  /** Places search and geometry hydration. */
+  /** Geometry export re-query for CSV downloads. */
+  placeExport: IPlaceGeometryExporter;
+  /** Places map search. */
   placeSearch: IPlaceSearchService;
   /** Industry taxonomy lookup and OSM tag matching. */
   taxonomy: ICategoryTaxonomy;

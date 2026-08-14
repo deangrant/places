@@ -1,13 +1,7 @@
 import styles from "./index.module.css";
+import type { MapControlsProps } from "./index.types";
 
-export interface MapControlsProps {
-  /** Opens the export geometry modal. */
-  onExport: () => void;
-  /** Fits the map viewport to the current search results. */
-  onFitResults: () => void;
-}
-
-/** Fit-results and export controls overlaid on the map. */
+/** Renders fit-results and export controls overlaid on the map. */
 export function MapControls({ onExport, onFitResults }: MapControlsProps) {
   return (
     <div className={styles.mapControls}>

@@ -16,7 +16,7 @@ const STATUS_CLASS: Record<OverpassAttemptEvent["status"], string> = {
   timed_out: styles.timed_out,
 };
 
-/** Compact list of Overpass interpreter attempts for search/export loaders. */
+/** Renders a compact list of Overpass interpreter attempts for loaders. */
 export function OverpassQueryStatus({ attempts }: OverpassQueryStatusProps) {
   if (attempts.length === 0) {
     return null;

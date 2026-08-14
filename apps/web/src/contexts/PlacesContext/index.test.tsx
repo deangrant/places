@@ -4,7 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import { PlacesProvider, usePlaces } from "@/contexts/PlacesContext";
 import { ServicesProvider } from "@/contexts/ServicesContext";
 import type { AppServices } from "@/services/app-services.types";
-import type { IPlaceSearchService } from "@/services/places/place-search-service";
+import type {
+  IPlaceGeometryExporter,
+  IPlaceSearchService,
+} from "@/services/places/place-search-service";
 import type { Place, PlaceSearchResult } from "@/types/places.types";
 
 function makePlace(overrides: Partial<Place> & Pick<Place, "id">): Place {
@@ -34,8 +37,12 @@ function makePlace(overrides: Partial<Place> & Pick<Place, "id">): Place {
 }
 
 function createWrapper(placeSearch: IPlaceSearchService) {
+  const placeExport: IPlaceGeometryExporter = {
+    exportByGeometry: vi.fn(() => Promise.resolve([])),
+  };
   const services: AppServices = {
     brandCatalog: { search: () => [] },
+    placeExport,
     placeSearch,
     taxonomy: {
       getById: () => undefined,
@@ -62,8 +69,6 @@ describe("PlacesProvider", () => {
     });
 
     const placeSearch: IPlaceSearchService = {
-      exportByGeometry: vi.fn(() => Promise.resolve([])),
-      fetchPlaceGeometry: vi.fn(() => Promise.resolve(null)),
       search: vi
         .fn()
         .mockImplementationOnce(() => first)
@@ -107,12 +112,9 @@ describe("PlacesProvider", () => {
     expect(result.current.places[0]?.id).toBe("way/2");
   });
 
-  it("does not fetch footprints when selecting a search result", async () => {
-    const fetchPlaceGeometry = vi.fn(() => Promise.resolve(null));
+  it("selects a search result without fetching footprints", async () => {
     const place = makePlace({ id: "way/9", osmId: 9, osmType: "way" });
     const placeSearch: IPlaceSearchService = {
-      exportByGeometry: vi.fn(() => Promise.resolve([])),
-      fetchPlaceGeometry,
       search: vi.fn(() =>
         Promise.resolve({
           places: [place],
@@ -135,15 +137,11 @@ describe("PlacesProvider", () => {
     });
 
     expect(result.current.selectedPlaceId).toBe("way/9");
-    expect(result.current.geometryLoading).toBe(false);
     expect(result.current.error).toBeNull();
-    expect(fetchPlaceGeometry).not.toHaveBeenCalled();
   });
 
   it("clears truncated on search failure", async () => {
     const placeSearch: IPlaceSearchService = {
-      exportByGeometry: vi.fn(() => Promise.resolve([])),
-      fetchPlaceGeometry: vi.fn(() => Promise.resolve(null)),
       search: vi
         .fn()
         .mockResolvedValueOnce({

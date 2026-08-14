@@ -7,7 +7,6 @@ import type { IPlaceQueryBuilder } from "@/services/places/place-query-builder";
 import { PlaceSearchService } from "@/services/places/place-search-service";
 import type {
   GeocodeResult,
-  OsmElement,
   Place,
   PlaceSearchCriteria,
 } from "@/types/places.types";
@@ -79,7 +78,6 @@ function createService(options: {
   };
   const queryBuilder: IPlaceQueryBuilder = options.queryBuilder ?? {
     build: vi.fn(() => "query"),
-    buildGeometryQuery: vi.fn(() => "geom"),
   };
   const normalizer: IOsmPlaceNormalizer = options.normalizer ?? {
     normalize: vi.fn(() => []),
@@ -149,7 +147,6 @@ describe("PlaceSearchService.search", () => {
   it("falls back to bbox when area id conversion fails", async () => {
     const queryBuilder: IPlaceQueryBuilder = {
       build: vi.fn(() => "query"),
-      buildGeometryQuery: vi.fn(() => "geom"),
     };
     const { service } = createService({
       areaResolver: { resolveAdmin: vi.fn(async () => adminNode) },
@@ -185,7 +182,6 @@ describe("PlaceSearchService.exportByGeometry", () => {
   it("uses center output and center normalizer for POINT", async () => {
     const queryBuilder: IPlaceQueryBuilder = {
       build: vi.fn(() => "center-query"),
-      buildGeometryQuery: vi.fn(() => "geom"),
     };
     const normalizer: IOsmPlaceNormalizer = {
       normalize: vi.fn(() => [
@@ -216,7 +212,6 @@ describe("PlaceSearchService.exportByGeometry", () => {
   it("uses geom output and keeps only matching POLYGON rows", async () => {
     const queryBuilder: IPlaceQueryBuilder = {
       build: vi.fn(() => "geom-query"),
-      buildGeometryQuery: vi.fn(() => "geom"),
     };
     const normalizer: IOsmPlaceNormalizer = {
       normalize: vi.fn(() => []),
@@ -249,36 +244,5 @@ describe("PlaceSearchService.exportByGeometry", () => {
     expect(normalizer.normalize).not.toHaveBeenCalled();
     expect(places).toHaveLength(1);
     expect(places[0].id).toBe("way/2");
-  });
-});
-
-describe("PlaceSearchService.fetchPlaceGeometry", () => {
-  it("returns null for nodes", async () => {
-    const { service } = createService({});
-    await expect(service.fetchPlaceGeometry("node", 1)).resolves.toBeNull();
-  });
-
-  it("hydrates geometry from the first Overpass element", async () => {
-    const element: OsmElement = {
-      geometry: [
-        { lat: 0, lon: 0 },
-        { lat: 0, lon: 1 },
-        { lat: 1, lon: 1 },
-        { lat: 1, lon: 0 },
-        { lat: 0, lon: 0 },
-      ],
-      id: 9,
-      type: "way",
-    };
-    const { service } = createService({
-      overpass: { query: vi.fn(async () => ({ elements: [element] })) },
-    });
-    const update = await service.fetchPlaceGeometry("way", 9);
-    expect(update).not.toBeNull();
-    if (!update) {
-      return;
-    }
-    expect(update.geometryType).toBe("POLYGON");
-    expect(update.geometry.polygons).toHaveLength(1);
   });
 });

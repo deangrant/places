@@ -27,6 +27,7 @@ export function createServices(): AppServices {
 
   return {
     brandCatalog,
+    placeExport: placeSearch,
     placeSearch,
     taxonomy,
   };

@@ -25,12 +25,10 @@ export interface PlacesContextValue {
   clearBoundsToFit: () => void;
   /** Active search filter criteria. */
   criteria: PlaceSearchCriteria;
-  /** Last search or geometry-hydration error message, or null when none. */
+  /** Last search error message, or null when none. */
   error: string | null;
   /** Fits the map to the current result set centroids. */
   fitResultsBounds: () => void;
-  /** True while selected-place footprint geometry is loading. */
-  geometryLoading: boolean;
   /** True while a Places search is in flight. */
   loading: boolean;
   /** Current map camera state. */

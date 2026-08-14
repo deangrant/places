@@ -3,9 +3,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { MAP_WORLD_BOUNDS, MAPBOX_STYLE_URL } from "@/constants/api.constants";
 import { ExportGeometryModal } from "@/pages/Places/components/ExportGeometryModal";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { MapControls } from "@/pages/Places/components/MapControls";
 import styles from "./index.module.css";
 import type { MapViewProps } from "./index.types";
-import { MapControls } from "./map-controls";
 import { isGeoJsonSource, nearlyEqual, placesToGeoJson } from "./map-helpers";
 import {
   addPlacesMapLayers,

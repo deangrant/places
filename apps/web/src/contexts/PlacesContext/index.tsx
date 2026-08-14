@@ -93,7 +93,6 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
     if (!place) {
       dispatch({
         bounds: null,
-        hydrate: false,
         placeId,
         type: "select/place",
       });
@@ -106,7 +105,6 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
     );
     dispatch({
       bounds,
-      hydrate: false,
       placeId,
       type: "select/place",
     });
@@ -177,7 +175,6 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
       criteria,
       error: session.error,
       fitResultsBounds,
-      geometryLoading: session.geometryLoading,
       loading: session.loading,
       mapView,
       overpassAttempts: session.overpassAttempts,
@@ -200,7 +197,6 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
       selectPlace,
       session.boundsToFit,
       session.error,
-      session.geometryLoading,
       session.loading,
       session.overpassAttempts,
       session.places,

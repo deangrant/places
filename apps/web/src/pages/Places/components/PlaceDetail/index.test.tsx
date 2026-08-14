@@ -43,7 +43,6 @@ function stubPlaces(partial: Partial<PlacesContextValue>): void {
     criteria: {},
     error: null,
     fitResultsBounds: vi.fn(),
-    geometryLoading: false,
     loading: false,
     mapView: { lat: 0, lon: 0, zoom: 1 },
     overpassAttempts: [],

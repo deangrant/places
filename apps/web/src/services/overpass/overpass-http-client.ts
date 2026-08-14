@@ -49,7 +49,9 @@ export interface IOverpassClient {
  * Error raised when Overpass returns a non-success HTTP status or empty body.
  */
 export class OverpassError extends Error {
+  /** HTTP status when the failure came from a non-success response. */
   readonly status?: number;
+  /** True when the client soft-timeout aborted the attempt. */
   readonly timedOut: boolean;
 
   /**
@@ -90,7 +92,12 @@ export class OverpassHttpClient implements IOverpassClient {
     this.shuffle = shuffle;
   }
 
-  /** @inheritdoc */
+  /**
+   * Executes an Overpass QL query with shuffled failover across interpreters.
+   * @param query Complete Overpass QL script.
+   * @param signal Optional abort signal for cancellation.
+   * @param onAttempt Optional per-endpoint progress callback.
+   */
   query(
     query: string,
     signal?: AbortSignal,
@@ -334,22 +341,7 @@ export function shuffleEndpoints(endpoints: readonly string[]): string[] {
 }
 
 /**
- * Merges an Overpass attempt event into the attempt list by endpoint index.
- * @param attempts Current attempt snapshots.
- * @param attempt Incoming progress event.
- */
-export function mergeOverpassAttempt(
-  attempts: readonly OverpassAttemptEvent[],
-  attempt: OverpassAttemptEvent,
-): OverpassAttemptEvent[] {
-  const next = attempts.filter((entry) => entry.index !== attempt.index);
-  next.push(attempt);
-  next.sort((left, right) => left.index - right.index);
-  return next;
-}
-
-/**
- * User-facing message when an Overpass query hits the soft timeout budget.
+ * Returns a user-facing message when an Overpass query hits the soft timeout budget.
  */
 export function overpassTimeoutMessage(): string {
   return `Query timed out after about ${OVERPASS_TIMEOUT_SECONDS}s. Narrow the area or filters.`;

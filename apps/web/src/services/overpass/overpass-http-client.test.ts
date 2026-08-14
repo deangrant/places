@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OVERPASS_TIMEOUT_SECONDS } from "@/constants/api.constants";
+import { mergeOverpassAttempt } from "@/pages/Places/utils/merge-overpass-attempt";
 import {
   hostnameFromEndpoint,
   isRetryableOverpassFailure,
-  mergeOverpassAttempt,
   type OverpassAttemptEvent,
   OverpassError,
   OverpassHttpClient,

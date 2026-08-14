@@ -1,24 +1,17 @@
 import type { MouseEvent } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/core/Button";
 import { Modal } from "@/components/core/Modal";
 import { Spinner } from "@/components/core/Spinner";
-import { OVERPASS_TIMEOUT_SECONDS } from "@/constants/api.constants";
 import { usePlaces } from "@/contexts/PlacesContext";
 import { useServices } from "@/contexts/ServicesContext";
 import { OverpassQueryStatus } from "@/pages/Places/components/OverpassQueryStatus";
-import {
-  EXPORT_GEOMETRY_TYPE_PRIORITY,
-  preparePlacesForGeometryExport,
-  resolveEffectiveGeometryType,
-} from "@/services/export/export-places-by-geometry";
-import { downloadPlacesCsv } from "@/services/export/places-csv-export";
-import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client";
-import { mergeOverpassAttempt } from "@/services/overpass/overpass-http-client";
+import { EXPORT_GEOMETRY_TYPE_PRIORITY } from "@/services/export/export-places-by-geometry";
 import type { PlaceGeometryType } from "@/types/places.types";
 import styles from "./index.module.css";
 import type { ExportGeometryModalProps } from "./index.types";
+import { useExportPlacesByGeometry } from "./use-export-places-by-geometry";
 
 /** Supported CSV geometry encodings for export. */
 export type PlaceExportFormat = "WKT";
@@ -48,39 +41,33 @@ const FORMAT_HINTS: Record<PlaceExportFormat, string> = {
 const DEFAULT_GEOMETRY_SELECTION: PlaceGeometryType[] = [];
 const DEFAULT_FORMAT_SELECTION: PlaceExportFormat[] = ["WKT"];
 
-/** Modal for choosing geometry and format for a Places CSV export. */
+/** Renders the geometry and format picker for a Places CSV export. */
 export function ExportGeometryModal({
   open,
   onClose,
   onExported,
 }: ExportGeometryModalProps) {
   const { criteria } = usePlaces();
-  const { placeSearch } = useServices();
+  const { placeExport } = useServices();
   const [selectedGeometry, setSelectedGeometry] = useState<PlaceGeometryType[]>(
     DEFAULT_GEOMETRY_SELECTION,
   );
   const [selectedFormats, setSelectedFormats] = useState<PlaceExportFormat[]>(
     DEFAULT_FORMAT_SELECTION,
   );
-  const [exporting, setExporting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [remainingSeconds, setRemainingSeconds] = useState(
-    OVERPASS_TIMEOUT_SECONDS,
-  );
-  const [overpassAttempts, setOverpassAttempts] = useState<
-    OverpassAttemptEvent[]
-  >([]);
-
-  useEffect(() => {
-    if (!exporting) {
-      return;
-    }
-    setRemainingSeconds(OVERPASS_TIMEOUT_SECONDS);
-    const intervalId = window.setInterval(() => {
-      setRemainingSeconds((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => window.clearInterval(intervalId);
-  }, [exporting]);
+  const {
+    canExport,
+    error,
+    exporting,
+    handleExport,
+    overpassAttempts,
+    remainingSeconds,
+  } = useExportPlacesByGeometry({
+    criteria,
+    onClose,
+    onExported,
+    placeExport,
+  });
 
   const toggleGeometry = useCallback((event: MouseEvent<HTMLButtonElement>) => {
     const type = event.currentTarget.dataset.geometryType;
@@ -112,66 +99,12 @@ export function ExportGeometryModal({
     });
   }, []);
 
-  const canExport =
-    selectedGeometry.length > 0 && selectedFormats.length > 0 && !exporting;
+  const exportEnabled =
+    canExport(selectedGeometry) && selectedFormats.length > 0;
 
-  const handleExport = useCallback(() => {
-    if (
-      !(selectedGeometry.length > 0 && selectedFormats.length > 0) ||
-      exporting
-    ) {
-      return;
-    }
-
-    setExporting(true);
-    setError(null);
-    setOverpassAttempts([]);
-    const controller = new AbortController();
-    const effectiveType = resolveEffectiveGeometryType(selectedGeometry);
-
-    preparePlacesForGeometryExport(
-      criteria,
-      effectiveType,
-      (exportCriteria, geometryType, signal, onAttempt) =>
-        placeSearch.exportByGeometry(
-          exportCriteria,
-          geometryType,
-          signal,
-          onAttempt,
-        ),
-      controller.signal,
-      (attempt) => {
-        setOverpassAttempts((prev) => mergeOverpassAttempt(prev, attempt));
-      },
-    )
-      .then((prepared) => {
-        downloadPlacesCsv(prepared);
-        onExported?.(effectiveType);
-        onClose();
-      })
-      .catch((exportError: unknown) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        const message =
-          exportError instanceof Error
-            ? exportError.message
-            : "Couldn't create the export. Please try again.";
-        setError(message);
-      })
-      .finally(() => {
-        setExporting(false);
-        setOverpassAttempts([]);
-      });
-  }, [
-    criteria,
-    exporting,
-    onClose,
-    onExported,
-    placeSearch,
-    selectedFormats.length,
-    selectedGeometry,
-  ]);
+  const onExportClick = useCallback(() => {
+    handleExport(selectedGeometry);
+  }, [handleExport, selectedGeometry]);
 
   return (
     <>
@@ -254,8 +187,8 @@ export function ExportGeometryModal({
             Cancel
           </Button>
           <Button
-            disabled={!canExport}
-            onClick={handleExport}
+            disabled={!exportEnabled}
+            onClick={onExportClick}
             variant="primary"
           >
             Export

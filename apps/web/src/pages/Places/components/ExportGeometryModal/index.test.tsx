@@ -11,7 +11,10 @@ import { PlacesProvider } from "@/contexts/PlacesContext";
 import { ServicesProvider } from "@/contexts/ServicesContext";
 import { ExportGeometryModal } from "@/pages/Places/components/ExportGeometryModal";
 import type { AppServices } from "@/services/app-services.types";
-import type { IPlaceSearchService } from "@/services/places/place-search-service";
+import type {
+  IPlaceGeometryExporter,
+  IPlaceSearchService,
+} from "@/services/places/place-search-service";
 import type { Place } from "@/types/places.types";
 
 const downloadPlacesCsv = vi.hoisted(() => vi.fn());
@@ -56,11 +59,12 @@ function renderModal(
 ): {
   onClose: ReturnType<typeof vi.fn>;
   onExported: ReturnType<typeof vi.fn>;
-  placeSearch: IPlaceSearchService;
+  placeExport: IPlaceGeometryExporter;
 } {
-  const placeSearch: IPlaceSearchService = {
+  const placeExport: IPlaceGeometryExporter = {
     exportByGeometry: vi.fn(() => Promise.resolve([place])),
-    fetchPlaceGeometry: vi.fn(() => Promise.resolve(null)),
+  };
+  const placeSearch: IPlaceSearchService = {
     search: vi.fn(() =>
       Promise.resolve({ places: [], scope: {}, truncated: false }),
     ),
@@ -68,6 +72,7 @@ function renderModal(
 
   const services: AppServices = {
     brandCatalog: { search: vi.fn(() => []) },
+    placeExport,
     placeSearch,
     taxonomy: {
       getById: vi.fn(),
@@ -92,12 +97,12 @@ function renderModal(
     </Wrapper>,
   );
 
-  return { onClose, onExported, placeSearch };
+  return { onClose, onExported, placeExport };
 }
 
 describe("ExportGeometryModal", () => {
   it("exports POINT via criteria requery without batch geometry fetch", async () => {
-    const { onClose, onExported, placeSearch } = renderModal();
+    const { onClose, onExported, placeExport } = renderModal();
 
     fireEvent.click(screen.getByRole("button", { name: "POINT" }));
     fireEvent.click(screen.getByRole("button", { name: EXPORT_BUTTON }));
@@ -105,7 +110,7 @@ describe("ExportGeometryModal", () => {
     await waitFor(() => {
       expect(downloadPlacesCsv).toHaveBeenCalledWith([place]);
     });
-    expect(placeSearch.exportByGeometry).toHaveBeenCalledWith(
+    expect(placeExport.exportByGeometry).toHaveBeenCalledWith(
       {},
       "POINT",
       expect.any(AbortSignal),
@@ -116,8 +121,8 @@ describe("ExportGeometryModal", () => {
   });
 
   it("resolves MULTIPOLYGON when all tiles are selected", async () => {
-    const { onExported, placeSearch } = renderModal();
-    vi.mocked(placeSearch.exportByGeometry).mockResolvedValueOnce([]);
+    const { onExported, placeExport } = renderModal();
+    vi.mocked(placeExport.exportByGeometry).mockResolvedValueOnce([]);
 
     fireEvent.click(screen.getByRole("button", { name: "POINT" }));
     fireEvent.click(screen.getByRole("button", { name: "POLYGON" }));
@@ -127,7 +132,7 @@ describe("ExportGeometryModal", () => {
     await waitFor(() => {
       expect(onExported).toHaveBeenCalledWith("MULTIPOLYGON");
     });
-    expect(placeSearch.exportByGeometry).toHaveBeenCalledWith(
+    expect(placeExport.exportByGeometry).toHaveBeenCalledWith(
       {},
       "MULTIPOLYGON",
       expect.any(AbortSignal),

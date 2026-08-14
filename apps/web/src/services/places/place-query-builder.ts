@@ -4,11 +4,7 @@ import {
 } from "@/constants/api.constants";
 import { isAllowedOsmTagKey } from "@/constants/osm-tags.constants";
 import type { ICategoryLookup } from "@/services/taxonomy/category-taxonomy";
-import type {
-  Place,
-  PlaceSearchCriteria,
-  SpatialScope,
-} from "@/types/places.types";
+import type { PlaceSearchCriteria, SpatialScope } from "@/types/places.types";
 
 /**
  * Overpass print mode for a Places criteria query.
@@ -32,12 +28,6 @@ export interface IPlaceQueryBuilder {
     scope: SpatialScope,
     outputMode?: PlaceQueryOutputMode,
   ) => string;
-  /**
-   * Compiles an Overpass QL script that fetches full geometry for one element.
-   * @param osmType OSM element type (`way` or `relation`).
-   * @param osmId OSM numeric id.
-   */
-  buildGeometryQuery: (osmType: Place["osmType"], osmId: number) => string;
 }
 
 /**
@@ -53,7 +43,12 @@ export class PlaceQueryBuilder implements IPlaceQueryBuilder {
     this.taxonomy = taxonomy;
   }
 
-  /** @inheritdoc */
+  /**
+   * Compiles criteria and a resolved spatial scope into Overpass QL.
+   * @param criteria User-facing search filters.
+   * @param scope Resolved area and/or bbox constraint.
+   * @param outputMode Overpass print mode; defaults to `center`.
+   */
   build(
     criteria: PlaceSearchCriteria,
     scope: SpatialScope,
@@ -86,15 +81,6 @@ export class PlaceQueryBuilder implements IPlaceQueryBuilder {
     ]
       .filter(Boolean)
       .join("\n");
-  }
-
-  /** @inheritdoc */
-  buildGeometryQuery(osmType: Place["osmType"], osmId: number): string {
-    return [
-      `[out:json][timeout:${OVERPASS_TIMEOUT_SECONDS}];`,
-      `${osmType}(${osmId});`,
-      "out geom;",
-    ].join("\n");
   }
 
   /**

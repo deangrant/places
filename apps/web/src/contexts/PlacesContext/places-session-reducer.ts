@@ -1,6 +1,5 @@
+import { mergeOverpassAttempt } from "@/pages/Places/utils/merge-overpass-attempt";
 import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client";
-import { mergeOverpassAttempt } from "@/services/overpass/overpass-http-client";
-import type { PlaceGeometryUpdate } from "@/services/places/place-search-service";
 import type { BBox, Place } from "@/types/places.types";
 
 /**
@@ -9,10 +8,8 @@ import type { BBox, Place } from "@/types/places.types";
 export interface PlacesSessionState {
   /** Bounding box the map should fit, or null when idle. */
   boundsToFit: BBox | null;
-  /** Last search or geometry-hydration error message, or null when none. */
+  /** Last search error message, or null when none. */
   error: string | null;
-  /** True while selected-place footprint geometry is loading. */
-  geometryLoading: boolean;
   /** True while a Places search is in flight. */
   loading: boolean;
   /** Live Overpass interpreter attempts for the in-flight search. */
@@ -29,7 +26,6 @@ export interface PlacesSessionState {
 export const initialPlacesSessionState: PlacesSessionState = {
   boundsToFit: null,
   error: null,
-  geometryLoading: false,
   loading: false,
   overpassAttempts: [],
   places: [],
@@ -43,9 +39,6 @@ export const initialPlacesSessionState: PlacesSessionState = {
 export type PlacesSessionAction =
   | { type: "bounds/clear" }
   | { type: "bounds/set"; bounds: BBox | null }
-  | { type: "geometry/failed"; message: string }
-  | { type: "geometry/settled" }
-  | { type: "geometry/succeeded"; placeId: string; update: PlaceGeometryUpdate }
   | { type: "search/attempt"; attempt: OverpassAttemptEvent }
   | { type: "search/failed"; message: string }
   | { type: "search/finished" }
@@ -61,7 +54,6 @@ export type PlacesSessionAction =
       type: "select/place";
       placeId: string;
       bounds: BBox | null;
-      hydrate: boolean;
     };
 
 /**
@@ -79,29 +71,6 @@ export function placesSessionReducer(
     }
     case "bounds/set": {
       return { ...state, boundsToFit: action.bounds };
-    }
-    case "geometry/failed": {
-      return { ...state, error: action.message };
-    }
-    case "geometry/settled": {
-      return { ...state, geometryLoading: false };
-    }
-    case "geometry/succeeded": {
-      return {
-        ...state,
-        places: state.places.map((entry) =>
-          entry.id === action.placeId
-            ? {
-                ...entry,
-                geometry: action.update.geometry,
-                geometryType: action.update.geometryType,
-                geometryWkt: action.update.geometryWkt,
-                latitude: action.update.latitude,
-                longitude: action.update.longitude,
-              }
-            : entry,
-        ),
-      };
     }
     case "search/attempt": {
       return {
@@ -130,7 +99,6 @@ export function placesSessionReducer(
         ...state,
         boundsToFit: null,
         error: null,
-        geometryLoading: false,
         loading: true,
         overpassAttempts: [],
         places: [],
@@ -150,7 +118,6 @@ export function placesSessionReducer(
     case "select/clear": {
       return {
         ...state,
-        geometryLoading: false,
         selectedPlaceId: null,
       };
     }
@@ -158,8 +125,6 @@ export function placesSessionReducer(
       return {
         ...state,
         boundsToFit: action.bounds,
-        error: action.hydrate ? null : state.error,
-        geometryLoading: action.hydrate,
         selectedPlaceId: action.placeId,
       };
     }
