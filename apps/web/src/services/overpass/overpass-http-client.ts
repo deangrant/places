@@ -77,16 +77,15 @@ export class OverpassHttpClient implements IOverpassClient {
 
     const text = await response.text();
 
-    if (text.includes("runtime error:") || text.includes("Error:")) {
-      throw new OverpassError(
-        "Overpass rejected the query. Narrow the area or simplify filters.",
-      );
-    }
-
     let parsed: OverpassResponse;
     try {
       parsed = JSON.parse(text) as OverpassResponse;
     } catch (error) {
+      if (isOverpassPlainTextError(text)) {
+        throw new OverpassError(
+          "Overpass rejected the query. Narrow the area or simplify filters.",
+        );
+      }
       throw new OverpassError(
         "Overpass returned an unexpected response. Try a smaller search area.",
         { cause: error },
@@ -99,6 +98,16 @@ export class OverpassHttpClient implements IOverpassClient {
 
     return parsed;
   }
+}
+
+/**
+ * True when a non-JSON Overpass body looks like an interpreter error envelope.
+ * Only used after JSON.parse fails so OSM tag substrings cannot false-positive.
+ * @param text Raw response body.
+ */
+function isOverpassPlainTextError(text: string): boolean {
+  const trimmed = text.trimStart().toLowerCase();
+  return trimmed.startsWith("runtime error:") || trimmed.startsWith("error:");
 }
 
 /**
