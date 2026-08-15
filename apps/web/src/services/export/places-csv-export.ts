@@ -24,6 +24,9 @@ export const PLACE_CSV_COLUMNS = [
 
 const CSV_ESCAPE_PATTERN = /[",\n\r]/;
 
+/** Cells that spreadsheets may treat as formulas (OWASP CSV injection). */
+const CSV_FORMULA_RISK_PATTERN = /^([\t\r]|[ \t\r]*[=+\-@])/;
+
 /** OSM keys already represented by dedicated CSV columns (omitted from `tags`). */
 const TAGS_COLUMN_EXCLUDED_KEYS = new Set([
   "addr:city",
@@ -137,14 +140,19 @@ export function downloadPlacesCsv(
 }
 
 /**
- * Escapes a CSV field per RFC4180 (quote when needed).
+ * Escapes a CSV field for spreadsheet-safe RFC4180 output.
+ * Prefixes formula-risk values with `'` then quotes when needed.
  * @param value Raw field value.
  */
 export function escapeCsvField(value: string): string {
-  if (CSV_ESCAPE_PATTERN.test(value)) {
-    return `"${value.replaceAll('"', '""')}"`;
+  let cell = value;
+  if (CSV_FORMULA_RISK_PATTERN.test(cell)) {
+    cell = `'${cell}`;
   }
-  return value;
+  if (CSV_ESCAPE_PATTERN.test(cell)) {
+    return `"${cell.replaceAll('"', '""')}"`;
+  }
+  return cell;
 }
 
 /**

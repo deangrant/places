@@ -7,6 +7,9 @@ import {
 } from "@/services/export/places-csv-export";
 import type { Place } from "@/types/places.types";
 
+/** Unneutralized formula cell starting a field (CSV injection regression). */
+const UNPREFIXED_HYPERLINK_CELL = /(?:^|,)=HYPERLINK/;
+
 function place(partial: Partial<Place> & Pick<Place, "id">): Place {
   return {
     brands: [],
@@ -39,6 +42,22 @@ describe("escapeCsvField", () => {
     expect(escapeCsvField("a,b")).toBe('"a,b"');
     expect(escapeCsvField('say "hi"')).toBe('"say ""hi"""');
     expect(escapeCsvField("line\nbreak")).toBe('"line\nbreak"');
+  });
+
+  it("prefixes spreadsheet formula-risk values with an apostrophe", () => {
+    expect(escapeCsvField("=cmd")).toBe("'=cmd");
+    expect(escapeCsvField("+1")).toBe("'+1");
+    expect(escapeCsvField("-1")).toBe("'-1");
+    expect(escapeCsvField("@sum")).toBe("'@sum");
+    expect(escapeCsvField(" =cmd")).toBe("' =cmd");
+    expect(escapeCsvField("\t=cmd")).toBe("'\t=cmd");
+    expect(escapeCsvField("\r=cmd")).toBe('"\'\r=cmd"');
+    expect(escapeCsvField("\thostile")).toBe("'\thostile");
+  });
+
+  it("quotes formula-risk values that also need RFC4180 escaping", () => {
+    expect(escapeCsvField("=cmd,run")).toBe('"\'=cmd,run"');
+    expect(escapeCsvField('=say "hi"')).toBe('"\'=say ""hi"""');
   });
 });
 
@@ -166,5 +185,17 @@ describe("buildPlacesCsv", () => {
     const [, dataLine] = csv.trimEnd().split("\n");
     expect(dataLine).toContain('"Cafe ""Downtown"""');
     expect(dataLine).toContain("node/9");
+  });
+
+  it("neutralizes formula-risk OSM name values in the CSV body", () => {
+    const csv = buildPlacesCsv([
+      place({
+        id: "node/99",
+        tags: { name: '=HYPERLINK("http://evil.example")' },
+      }),
+    ]);
+    const [, dataLine] = csv.trimEnd().split("\n");
+    expect(dataLine).toContain("'=HYPERLINK");
+    expect(dataLine).not.toMatch(UNPREFIXED_HYPERLINK_CELL);
   });
 });
