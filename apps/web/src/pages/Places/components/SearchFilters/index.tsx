@@ -159,7 +159,11 @@ export function SearchFilters() {
   return (
     <section aria-label="Place filters" className={styles.root}>
       <div className={styles.grid}>
-        <FormField htmlFor="brand" label="Brand">
+        <FormField
+          hint="Exact OSM brand match (suggestions are helpers only)."
+          htmlFor="brand"
+          label="Brand"
+        >
           <Autocomplete
             id="brand"
             onChange={handleBrandChange}
@@ -203,7 +207,11 @@ export function SearchFilters() {
           />
         </FormField>
 
-        <FormField htmlFor="country" label="Country">
+        <FormField
+          hint="Curated country list — not every ISO code."
+          htmlFor="country"
+          label="Country"
+        >
           <Select
             id="country"
             onChange={handleCountryChange}

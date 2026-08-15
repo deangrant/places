@@ -139,4 +139,14 @@ describe("SearchFilters", () => {
     expect(getCriteria().categoryId).toBe("coffee-shops");
     expect(getCriteria().brand).toBe("Starbucks");
   });
+
+  it("shows product-limitation hints for brand and country", () => {
+    renderFilters();
+    expect(
+      screen.getByText("Exact OSM brand match (suggestions are helpers only)."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Curated country list — not every ISO code."),
+    ).toBeInTheDocument();
+  });
 });

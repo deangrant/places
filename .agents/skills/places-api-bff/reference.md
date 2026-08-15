@@ -27,10 +27,12 @@ Example validation body:
   "status": 422,
   "detail": "One or more fields are invalid",
   "errors": {
-    "countryCode": ["must be a supported ISO country code"]
+    "countryCode": ["must be a 2-letter ISO country code"]
   }
 }
 ```
+
+The web country dropdown uses a curated subset of ISO codes; the API accepts any 2-letter ISO-3166-1 alpha-2 code.
 
 ## Status pairing (quick)
 
