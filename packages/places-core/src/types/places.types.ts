@@ -47,7 +47,7 @@ export interface PlaceSearchCriteria {
 }
 
 /**
- * SafeGraph-inspired place record normalized from OSM tags.
+ * Place record normalized from OSM tags.
  */
 export interface Place {
   /** Brand names associated with the place. */

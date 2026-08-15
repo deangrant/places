@@ -1,0 +1,12 @@
+---
+description: Workspace dependency policy — catalog, exact versions, zero-deps core/api
+alwaysApply: true
+---
+
+# Workspace dependencies
+
+- Prefer versions from `pnpm-workspace.yaml` `catalog:` and keep `saveExact`-style pinning.
+- `packages/places-core` and `apps/api` **must** stay free of third-party runtime dependencies (Node builtins + workspace `places-core` only for the API).
+- Web HTTP **must** keep using `fetch`; do **not** add axios, ky, or generated OpenAPI clients.
+- Do **not** add Express, Fastify, zod, valibot, or yup without an explicit product decision that clears the absolute-necessity bar in `places-api-bff`.
+- New packages **should** be justified in the PR; convenience alone is not enough.

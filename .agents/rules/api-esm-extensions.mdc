@@ -1,0 +1,11 @@
+---
+description: Require .js suffixes on relative imports in api and places-core (NodeNext)
+globs: apps/api/**/*.ts,packages/places-core/**/*.ts
+alwaysApply: false
+---
+
+# API / core ESM import extensions
+
+- Relative TypeScript imports **must** use `.js` suffixes (NodeNext emit), e.g. `from "./create-app.js"`.
+- Do **not** use extensionless relative imports in `apps/api` or `packages/places-core`.
+- Package imports (`places-core`, `node:http`, `vitest`) stay bare as today.

@@ -1,0 +1,13 @@
+---
+description: Preserve Places web design tokens and Mapbox paint ownership
+globs: apps/web/**/*.{css,module.css,tsx}
+alwaysApply: false
+---
+
+# Web design tokens
+
+- Full token catalog and component recipes: [`.agents/docs/DESIGN.md`](../docs/DESIGN.md).
+- Prefer CSS variables from `apps/web/src/styles/global.css`: `--color-*`, `--space-*`, `--radius-*`, `--font-sans` (Sora).
+- Keep the established dark green Places look; do **not** invent purple/cream/light landing themes on Places surfaces.
+- Mapbox layer/paint colors **should** stay centralized under `MapView` map-layer helpers, not scattered as one-off hex in random modules.
+- Match existing component spacing and borders; avoid decorative multi-shadow / glow patterns that fight the system.

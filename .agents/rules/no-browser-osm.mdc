@@ -1,0 +1,12 @@
+---
+description: Forbid browser Nominatim/Overpass clients; geography goes through the Places BFF
+globs: apps/web/**
+alwaysApply: false
+---
+
+# No browser OSM
+
+- The SPA **must not** fetch Nominatim, Overpass, or any public OSM geocoding/interpreter URL.
+- Do **not** add axios/ky/openapi clients for OSM; keep using `HttpPlacesApiClient` → `VITE_API_BASE_URL`.
+- Map tiles/styles via Mapbox are allowed; place search and admin resolution are **API-only**.
+- If a feature needs Nominatim or Overpass, extend `apps/api` (see `.agents/skills/places-api-bff`) and call it from the web client.

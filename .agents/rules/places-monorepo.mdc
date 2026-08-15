@@ -1,0 +1,14 @@
+---
+description: Places monorepo orientation, package roles, and hard invariants for every session
+alwaysApply: true
+---
+
+# Places monorepo
+
+- Packages: `apps/web` (SPA), `apps/api` (BFF), `packages/places-core` (shared zero-deps library).
+- Read root `AGENTS.md` and the matching skill under `.agents/skills/` before changing that area.
+- Browser **must not** call Nominatim or Overpass; only `apps/api` may.
+- `places-core` **must** keep zero runtime dependencies; rebuild `dist` for consumers.
+- Deploy web and API together; do not fork DTO shapes across packages.
+- Prefer workspace `catalog:` / exact versions; do not add Express, zod, or axios without an explicit product decision.
+- After UI refactors, run relevant Vitest targets and `pnpm doctor:full` when React Doctor issues are in play.

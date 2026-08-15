@@ -32,7 +32,9 @@ Example validation body:
 }
 ```
 
-The web country dropdown uses a curated subset of ISO codes; the API accepts any 2-letter ISO-3166-1 alpha-2 code.
+The web country dropdown uses the full static ISO 3166-1 alpha-2 list from
+`places-core` (`COUNTRY_OPTIONS`); the API accepts any 2-letter ISO-3166-1
+alpha-2 code.
 
 ## Status pairing (quick)
 
@@ -117,3 +119,12 @@ limiters, or “Cloudflare-ready” frameworks in this pass.
 | Workers | Wall-clock usually too short for current sync Overpass policy |
 | Rate limits | App-layer per-IP limits are required; edge limits recommended as defense-in-depth |
 | Handlers | Keep domain logic free of `node:http` specifics where practical so an adapter can wrap later |
+
+## Nominatim / Overpass usage policy
+
+- Identify every Nominatim request with a real `NOMINATIM_USER_AGENT` and a reachable `NOMINATIM_EMAIL` (placeholders like `example.com` often get HTTP 403).
+- Do **not** bulk-scrape or hammer public instances; keep Places filters narrow and reuse app rate limits.
+- Treat Nominatim 403 / blocked responses as client configuration or policy issues, not “retry harder” loops without backoff.
+- Overpass **must** use the mirror list / failover in `places-core` (`OVERPASS_ENDPOINTS`) with existing timeout and attempt caps—do not invent unbounded retries.
+- Long Overpass wall-clock (~180s sync budget) **must not** be hosted on short-lived Workers without a redesign; prefer long-running Node or Containers.
+- The browser **must never** call Nominatim or Overpass; only `apps/api` may.
