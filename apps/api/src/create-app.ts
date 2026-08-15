@@ -1,5 +1,4 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { OVERPASS_CLIENT_TIMEOUT_SECONDS } from "places-core";
 import type { ApiConfig } from "./config.js";
 import type { ApiServices } from "./create-services.js";
 import { applyCors } from "./http/cors.js";
@@ -16,6 +15,10 @@ import {
   PlacesRateLimiter,
   rateLimitHeaders,
 } from "./http/rate-limit.js";
+import {
+  createPlacesRequestSignal,
+  isResponseClosed,
+} from "./http/request-abort-signal.js";
 import {
   validatePlaceExportBody,
   validatePlaceSearchCriteria,
@@ -35,6 +38,9 @@ export function createRequestListener(
   return (req, res) => {
     handleRequest(req, res, config, services, rateLimiter).catch(
       (error: unknown) => {
+        if (isResponseClosed(res)) {
+          return;
+        }
         sendProblem(res, mapUnexpectedError(error));
       },
     );
@@ -114,6 +120,9 @@ async function handleRequest(
       problem(404, "Not found", `No route for ${path}.`, "/not-found"),
     );
   } catch (error) {
+    if (isResponseClosed(res)) {
+      return;
+    }
     sendProblem(res, mapUnexpectedError(error));
   }
 }
@@ -141,10 +150,16 @@ async function handleSearch(
     try {
       const result = await services.placeSearch.search(
         validated.value,
-        AbortSignal.timeout(OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000),
+        createPlacesRequestSignal(req, res),
       );
+      if (isResponseClosed(res)) {
+        return;
+      }
       sendJson(res, 200, result);
     } catch (error) {
+      if (isResponseClosed(res)) {
+        return;
+      }
       sendProblem(res, mapDomainError(error));
     }
   } finally {
@@ -176,10 +191,16 @@ async function handleExport(
       const places = await services.placeExport.exportByGeometry(
         validated.value.criteria,
         validated.value.geometryType,
-        AbortSignal.timeout(OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000),
+        createPlacesRequestSignal(req, res),
       );
+      if (isResponseClosed(res)) {
+        return;
+      }
       sendJson(res, 200, { places });
     } catch (error) {
+      if (isResponseClosed(res)) {
+        return;
+      }
       sendProblem(res, mapDomainError(error));
     }
   } finally {
