@@ -62,6 +62,7 @@ Rate-limit responses **must** include `Retry-After`, `RateLimit-Limit`,
 
 | Variable | Purpose |
 | --- | --- |
+| `HOST` | Listen address (default `127.0.0.1`; set `0.0.0.0` / `::` only when intentional LAN/container binding is required) |
 | `PORT` | Listen port (default `8787`) |
 | `CORS_ORIGINS` | Comma-separated allowlist (e.g. `http://localhost:5173`) |
 | `NOMINATIM_USER_AGENT` | Identifying User-Agent for Nominatim |

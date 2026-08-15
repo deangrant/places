@@ -28,6 +28,7 @@ function testConfig(
 ): ApiConfig {
   return {
     corsOrigins: ["http://localhost:5173"],
+    host: "127.0.0.1",
     maxBodyBytes: 1_048_576,
     nominatimEmail: "test@example.com",
     nominatimUserAgent: "PlacesAPI/test",

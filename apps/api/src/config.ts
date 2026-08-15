@@ -6,6 +6,8 @@ import type { PlacesRateLimitConfig } from "./http/rate-limit.js";
 export interface ApiConfig {
   /** Allowed browser origins (exact match). */
   corsOrigins: readonly string[];
+  /** Listen address (default loopback; use 0.0.0.0 / :: only when intentional). */
+  host: string;
   /** Max JSON body bytes for POST routes. */
   maxBodyBytes: number;
   /** Nominatim contact email. */
@@ -30,6 +32,14 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const port = Number(env.PORT ?? "8787");
   if (!Number.isFinite(port) || port <= 0) {
     throw new Error("PORT must be a positive number.");
+  }
+
+  const hostRaw = env.HOST;
+  const host = hostRaw === undefined ? "127.0.0.1" : hostRaw.trim();
+  if (host === "") {
+    throw new Error(
+      "HOST must be a non-empty listen address (default 127.0.0.1). Use 0.0.0.0 or :: only when intentional LAN/container binding is required.",
+    );
   }
 
   const nominatimUserAgent = env.NOMINATIM_USER_AGENT?.trim();
@@ -63,6 +73,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
 
   return {
     corsOrigins,
+    host,
     maxBodyBytes: 1_048_576,
     nominatimEmail,
     nominatimEndpoint: env.NOMINATIM_ENDPOINT?.trim() || undefined,

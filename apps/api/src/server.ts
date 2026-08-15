@@ -13,7 +13,7 @@ const config = loadApiConfig();
 const services = createApiServices(config);
 const server = createServer(createRequestListener(config, services));
 
-server.listen(config.port, () => {
+server.listen(config.port, config.host, () => {
   // Startup log for local operators; keep free of secrets.
-  console.log(`Places API listening on http://localhost:${config.port}`);
+  console.log(`Places API listening on http://${config.host}:${config.port}`);
 });
