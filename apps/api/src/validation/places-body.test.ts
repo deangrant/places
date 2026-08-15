@@ -26,7 +26,7 @@ describe("validatePlaceSearchCriteria", () => {
     if (!result.ok) {
       expect(result.problem.status).toBe(422);
       expect(result.problem.type).toContain("/validation");
-      expect(result.problem.errors?.categoryId?.[0]).toContain(
+      expect(result.problem.errors?.categoryId[0]).toContain(
         "unknown category id",
       );
     }
@@ -40,7 +40,7 @@ describe("validatePlaceSearchCriteria", () => {
     });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.problem.errors?.osmTagKey?.[0]).toContain(
+      expect(result.problem.errors?.osmTagKey[0]).toContain(
         "unsupported OSM tag key",
       );
     }
@@ -70,7 +70,7 @@ describe("validatePlaceSearchCriteria", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.problem.status).toBe(422);
-      expect(result.problem.errors?.nameContains?.[0]).toBe(
+      expect(result.problem.errors?.nameContains[0]).toBe(
         "must be at most 200 characters",
       );
     }
@@ -83,7 +83,7 @@ describe("validatePlaceSearchCriteria", () => {
     });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.problem.errors?.categoryId?.[0]).toBe(
+      expect(result.problem.errors?.categoryId[0]).toBe(
         "must be at most 64 characters",
       );
     }
@@ -130,7 +130,7 @@ describe("validatePlaceExportBody", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.problem.status).toBe(422);
-      expect(result.problem.errors?.categoryId?.[0]).toContain(
+      expect(result.problem.errors?.categoryId[0]).toContain(
         "unknown category id",
       );
     }

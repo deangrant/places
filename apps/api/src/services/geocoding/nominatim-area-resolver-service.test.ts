@@ -6,6 +6,7 @@ import {
 } from "./nominatim-area-resolver-service.js";
 
 const HTTP_503_ERROR = /Location search failed \(HTTP 503\)/;
+const HTTP_403_ERROR = /Location search was blocked by Nominatim \(HTTP 403\)/;
 
 const TEST_CONTACT = {
   email: "places-test@example.com",
@@ -127,15 +128,15 @@ describe("NominatimAreaResolver", () => {
   });
 
   it("requests limit=5 and countrycodes when a country is set", async () => {
-    const fetchMock = vi.fn(async (input: string | URL) => {
+    const fetchMock = vi.fn((input: string | URL) => {
       const url = new URL(String(input));
       expect(url.searchParams.get("limit")).toBe("5");
       expect(url.searchParams.get("countrycodes")).toBe("us");
       expect(url.searchParams.get("country")).toBe("US");
-      return {
-        json: async () => [nominatimRow()],
+      return Promise.resolve({
+        json: () => Promise.resolve([nominatimRow()]),
         ok: true,
-      };
+      });
     });
     vi.stubGlobal("fetch", fetchMock);
     const resolver = new NominatimAreaResolver(TEST_CONTACT, TEST_ENDPOINT);
@@ -253,7 +254,7 @@ describe("NominatimAreaResolver", () => {
     );
     const resolver = new NominatimAreaResolver(TEST_CONTACT, TEST_ENDPOINT);
     await expect(resolver.resolveAdmin({ countryCode: "US" })).rejects.toThrow(
-      /Location search was blocked by Nominatim \(HTTP 403\)/,
+      HTTP_403_ERROR,
     );
   });
 

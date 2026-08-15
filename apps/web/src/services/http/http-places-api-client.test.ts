@@ -11,6 +11,10 @@ const criteria: PlaceSearchCriteria = {
   countryCode: "US",
 };
 
+const DEPLOY_REVISION_MISMATCH =
+  /Deploy the web app and API from the same revision/;
+const VITE_API_BASE_URL_REQUIRED = /VITE_API_BASE_URL is required/;
+
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
@@ -129,7 +133,7 @@ describe("HttpPlacesApiClient response shape", () => {
     );
     const client = new HttpPlacesApiClient("http://api.test");
     await expect(client.search(criteria)).rejects.toThrow(
-      /Deploy the web app and API from the same revision/,
+      DEPLOY_REVISION_MISMATCH,
     );
   });
 
@@ -140,7 +144,7 @@ describe("HttpPlacesApiClient response shape", () => {
     );
     const client = new HttpPlacesApiClient("http://api.test");
     await expect(client.exportByGeometry(criteria, "POINT")).rejects.toThrow(
-      /Deploy the web app and API from the same revision/,
+      DEPLOY_REVISION_MISMATCH,
     );
   });
 
@@ -263,7 +267,7 @@ describe("HttpPlacesApiClient errors", () => {
 describe("resolveApiBaseUrl", () => {
   it("throws when VITE_API_BASE_URL is missing or blank", () => {
     vi.stubEnv("VITE_API_BASE_URL", "");
-    expect(() => resolveApiBaseUrl()).toThrow(/VITE_API_BASE_URL is required/);
+    expect(() => resolveApiBaseUrl()).toThrow(VITE_API_BASE_URL_REQUIRED);
   });
 
   it("returns the configured base URL", () => {

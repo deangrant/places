@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Input } from "@/components/core/Input";
 
@@ -19,15 +19,19 @@ function ControlledInput({
   onChange?: (value: string) => void;
 }) {
   const [value, setValue] = useState(initial);
+  const handleChange = useCallback(
+    (next: string) => {
+      setValue(next);
+      onChange(next);
+    },
+    [onChange],
+  );
   return (
     <Input
       clearable={clearable}
       clearLabel={clearLabel}
       id="demo"
-      onChange={(next) => {
-        setValue(next);
-        onChange(next);
-      }}
+      onChange={handleChange}
       placeholder="Type here"
       value={value}
     />

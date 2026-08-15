@@ -1,8 +1,14 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { Button } from "@/components/core/Button";
 import { Spinner } from "@/components/core/Spinner";
 import { usePlaces } from "@/contexts/PlacesContext";
-import { MapView } from "@/pages/Places/components/MapView";
 import { OverpassQueryStatus } from "@/pages/Places/components/OverpassQueryStatus";
 import { PlaceDetail } from "@/pages/Places/components/PlaceDetail";
 import { ResultsList } from "@/pages/Places/components/ResultsList";
@@ -11,6 +17,11 @@ import { useQueryCountdown } from "@/pages/Places/use-query-countdown";
 import { filterPlacesByAddress } from "@/utils/filter-places-by-address";
 import { formatCountdown } from "@/utils/format-countdown";
 import styles from "./index.module.css";
+
+const MapView = lazy(async () => {
+  const module = await import("@/pages/Places/components/MapView");
+  return { default: module.MapView };
+});
 
 /** Page skeleton: filters, full-bleed map, and progressive side panel. */
 export function PlacesLayout() {
@@ -64,16 +75,24 @@ export function PlacesLayout() {
 
       <div className={styles.workspace}>
         <section aria-label="Map" className={styles.mapPane}>
-          <MapView
-            boundsToFit={boundsToFit}
-            onBoundsFitted={clearBoundsToFit}
-            onFitResults={fitResultsBounds}
-            onSelectPlace={selectPlace}
-            onViewChange={setMapView}
-            places={filteredPlaces}
-            selectedPlaceId={selectedPlaceId}
-            view={mapView}
-          />
+          <Suspense
+            fallback={
+              <div className={styles.mapFallback}>
+                <Spinner label="Loading map…" size="lg" />
+              </div>
+            }
+          >
+            <MapView
+              boundsToFit={boundsToFit}
+              onBoundsFitted={clearBoundsToFit}
+              onFitResults={fitResultsBounds}
+              onSelectPlace={selectPlace}
+              onViewChange={setMapView}
+              places={filteredPlaces}
+              selectedPlaceId={selectedPlaceId}
+              view={mapView}
+            />
+          </Suspense>
         </section>
 
         {showPanel ? (

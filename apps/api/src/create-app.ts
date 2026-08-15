@@ -89,29 +89,7 @@ async function handleRequest(
     const path = url.pathname;
 
     if (path === "/health/live" || path === "/health/ready") {
-      if (req.method !== "GET") {
-        sendProblem(
-          res,
-          problem(
-            405,
-            "Method not allowed",
-            `${req.method ?? "UNKNOWN"} is not allowed for ${path}.`,
-            "/method-not-allowed",
-          ),
-        );
-        return;
-      }
-      if (path === "/health/live") {
-        sendJson(res, 200, { status: "ok" });
-      } else {
-        sendJson(res, 200, {
-          checks: {
-            process: "ok",
-            upstream: "not_probed",
-          },
-          status: "ready",
-        });
-      }
+      handleHealth(req, res, path);
       return;
     }
 
@@ -148,6 +126,42 @@ async function handleRequest(
     }
     sendProblem(res, mapUnexpectedError(error));
   }
+}
+
+/**
+ * Serves liveness and readiness probes.
+ * @param req Incoming request.
+ * @param res Outgoing response.
+ * @param path Matched health path.
+ */
+function handleHealth(
+  req: IncomingMessage,
+  res: ServerResponse,
+  path: "/health/live" | "/health/ready" | string,
+): void {
+  if (req.method !== "GET") {
+    sendProblem(
+      res,
+      problem(
+        405,
+        "Method not allowed",
+        `${req.method ?? "UNKNOWN"} is not allowed for ${path}.`,
+        "/method-not-allowed",
+      ),
+    );
+    return;
+  }
+  if (path === "/health/live") {
+    sendJson(res, 200, { status: "ok" });
+    return;
+  }
+  sendJson(res, 200, {
+    checks: {
+      process: "ok",
+      upstream: "not_probed",
+    },
+    status: "ready",
+  });
 }
 
 async function handleSearch(

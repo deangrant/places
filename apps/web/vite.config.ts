@@ -6,6 +6,18 @@ import { defineConfig } from "vitest/config";
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  build: {
+    chunkSizeWarningLimit: 1900,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules/mapbox-gl")) {
+            return "mapbox";
+          }
+        },
+      },
+    },
+  },
   plugins: [react()],
   resolve: {
     alias: {

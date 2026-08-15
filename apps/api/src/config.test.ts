@@ -6,6 +6,8 @@ const REQUIRED_ENV = {
   NOMINATIM_USER_AGENT: "PlacesAPI/test",
 } as const;
 
+const HOST_EMPTY_ERROR = /HOST must be a non-empty listen address/;
+
 describe("loadApiConfig host", () => {
   it("defaults HOST to 127.0.0.1 when unset", () => {
     const config = loadApiConfig({ ...REQUIRED_ENV });
@@ -26,6 +28,6 @@ describe("loadApiConfig host", () => {
         ...REQUIRED_ENV,
         HOST: "   ",
       }),
-    ).toThrow(/HOST must be a non-empty listen address/);
+    ).toThrow(HOST_EMPTY_ERROR);
   });
 });

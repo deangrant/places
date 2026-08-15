@@ -32,6 +32,8 @@ const bakery: CategoryDefinition = {
   topCategory: "Food Services",
 };
 
+const ADVANCED_BUTTON_NAME = /Advanced/;
+
 const criteriaHolder: { current: PlaceSearchCriteria } = { current: {} };
 
 function captureCriteria(criteria: PlaceSearchCriteria): void {
@@ -200,7 +202,7 @@ describe("SearchFilters", () => {
     fireEvent.click(screen.getByRole("button", { name: "Advanced" }));
     chooseSelectOption("Category", "Food Services");
     chooseSelectOption("Subcategory", "Coffee Shops");
-    fireEvent.click(screen.getByRole("button", { name: /Advanced/ }));
+    fireEvent.click(screen.getByRole("button", { name: ADVANCED_BUTTON_NAME }));
 
     expect(screen.getByText("1")).toBeInTheDocument();
     const chip = screen.getByRole("button", {

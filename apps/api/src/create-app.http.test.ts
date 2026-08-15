@@ -26,6 +26,12 @@ const SEARCH_HEADERS = {
   Origin: ALLOWED_ORIGIN,
 };
 
+const FORBIDDEN_TYPE = /\/forbidden$/;
+const NOT_FOUND_TYPE = /\/not-found$/;
+const METHOD_NOT_ALLOWED_TYPE = /\/method-not-allowed$/;
+const PAYLOAD_TOO_LARGE_TYPE = /\/payload-too-large$/;
+const BAD_REQUEST_TYPE = /\/bad-request$/;
+
 function httpTestConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
   return testConfig({
     rateLimit: GENEROUS_RATE_LIMIT,
@@ -58,7 +64,7 @@ describe("createRequestListener HTTP contract", () => {
       expect(response.status).toBe(403);
       await expect(response.json()).resolves.toMatchObject({
         status: 403,
-        type: expect.stringMatching(/\/forbidden$/),
+        type: expect.stringMatching(FORBIDDEN_TYPE),
       });
     });
   });
@@ -82,7 +88,7 @@ describe("createRequestListener HTTP contract", () => {
       expect(response.status).toBe(404);
       await expect(response.json()).resolves.toMatchObject({
         status: 404,
-        type: expect.stringMatching(/\/not-found$/),
+        type: expect.stringMatching(NOT_FOUND_TYPE),
       });
     });
   });
@@ -90,12 +96,13 @@ describe("createRequestListener HTTP contract", () => {
   it("returns 405 for GET on places routes", async () => {
     await withServer(httpTestConfig(), mockServices(), async (baseUrl) => {
       for (const path of ["/places/search", "/places/export"] as const) {
+        // biome-ignore lint/performance/noAwaitInLoops: sequential assertion order
         const response = await fetch(`${baseUrl}${path}`, { method: "GET" });
         expect(response.status).toBe(405);
         await expect(response.json()).resolves.toMatchObject({
           detail: `GET is not allowed for ${path}.`,
           status: 405,
-          type: expect.stringMatching(/\/method-not-allowed$/),
+          type: expect.stringMatching(METHOD_NOT_ALLOWED_TYPE),
         });
       }
     });
@@ -117,7 +124,7 @@ describe("createRequestListener HTTP contract", () => {
         expect(response.status).toBe(413);
         await expect(response.json()).resolves.toMatchObject({
           status: 413,
-          type: expect.stringMatching(/\/payload-too-large$/),
+          type: expect.stringMatching(PAYLOAD_TOO_LARGE_TYPE),
         });
       },
     );
@@ -133,7 +140,7 @@ describe("createRequestListener HTTP contract", () => {
       expect(response.status).toBe(400);
       await expect(response.json()).resolves.toMatchObject({
         status: 400,
-        type: expect.stringMatching(/\/bad-request$/),
+        type: expect.stringMatching(BAD_REQUEST_TYPE),
       });
     });
   });
@@ -250,10 +257,9 @@ describe("createRequestListener HTTP contract", () => {
 
     for (const { message, status, typeSuffix } of cases) {
       const services = mockServices({
-        search: async () => {
-          throw new Error(message);
-        },
+        search: () => Promise.reject(new Error(message)),
       });
+      // biome-ignore lint/performance/noAwaitInLoops: sequential assertion order
       await withServer(httpTestConfig(), services, async (baseUrl) => {
         const response = await fetch(`${baseUrl}/places/search`, {
           body: JSON.stringify(VALID_SEARCH),

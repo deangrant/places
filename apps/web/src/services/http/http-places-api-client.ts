@@ -167,44 +167,39 @@ async function readNdjsonResult(
   const decoder = new TextDecoder();
   let buffer = "";
   let sawProgress = false;
+  let reading = true;
 
-  while (true) {
+  while (reading) {
+    // Sequential stream framing: each chunk must be decoded before the next read.
+    // biome-ignore lint/performance/noAwaitInLoops: ordered NDJSON framing
     const { done, value } = await reader.read();
     if (done) {
+      reading = false;
       break;
     }
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split("\n");
     buffer = lines.pop() ?? "";
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) {
-        continue;
-      }
-      const parsed = parseNdjsonLine(trimmed);
-      if (parsed.kind === "attempt") {
+    const early = consumeNdjsonLines(lines, onAttempt, (saw) => {
+      if (saw) {
         sawProgress = true;
-        onAttempt?.(parsed.event);
-        continue;
       }
-      if (parsed.kind === "problem") {
-        throw new Error(parsed.detail);
-      }
-      return parsed.body;
+    });
+    if (early !== undefined) {
+      return early;
     }
   }
 
   const trailing = buffer.trim();
   if (trailing) {
-    const parsed = parseNdjsonLine(trailing);
-    if (parsed.kind === "attempt") {
-      sawProgress = true;
-      onAttempt?.(parsed.event);
-    } else if (parsed.kind === "problem") {
-      throw new Error(parsed.detail);
-    } else {
-      return parsed.body;
+    const early = consumeNdjsonLines([trailing], onAttempt, (saw) => {
+      if (saw) {
+        sawProgress = true;
+      }
+    });
+    if (early !== undefined) {
+      return early;
     }
   }
 
@@ -215,6 +210,35 @@ async function readNdjsonResult(
   }
 
   throw new Error(UNEXPECTED_API_RESPONSE);
+}
+
+/**
+ * Applies complete NDJSON lines; returns a result body when present.
+ * @param lines Complete line strings (may include blanks).
+ * @param onAttempt Optional progress callback.
+ * @param noteAttempt Marks that an attempt event was observed.
+ */
+function consumeNdjsonLines(
+  lines: string[],
+  onAttempt: OverpassAttemptListener | undefined,
+  noteAttempt: (saw: boolean) => void,
+): unknown | undefined {
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      continue;
+    }
+    const parsed = parseNdjsonLine(trimmed);
+    if (parsed.kind === "attempt") {
+      noteAttempt(true);
+      onAttempt?.(parsed.event);
+      continue;
+    }
+    if (parsed.kind === "problem") {
+      throw new Error(parsed.detail);
+    }
+    return parsed.body;
+  }
 }
 
 type NdjsonParsed =
@@ -230,8 +254,8 @@ function parseNdjsonLine(line: string): NdjsonParsed {
   let value: unknown;
   try {
     value = JSON.parse(line);
-  } catch {
-    throw new Error(UNEXPECTED_API_RESPONSE);
+  } catch (error) {
+    throw new Error(UNEXPECTED_API_RESPONSE, { cause: error });
   }
   if (!isPlainObject(value) || typeof value.type !== "string") {
     throw new Error(UNEXPECTED_API_RESPONSE);

@@ -1,7 +1,13 @@
 import mapboxgl from "mapbox-gl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { MAP_WORLD_BOUNDS, MAPBOX_STYLE_URL } from "@/constants/api.constants";
-import { ExportGeometryModal } from "@/pages/Places/components/ExportGeometryModal";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MapControls } from "@/pages/Places/components/MapControls";
 import styles from "./index.module.css";
@@ -18,6 +24,11 @@ import {
   PLACES_LAYER_ID,
   PLACES_SOURCE_ID,
 } from "./map-layers";
+
+const ExportGeometryModal = lazy(async () => {
+  const module = await import("@/pages/Places/components/ExportGeometryModal");
+  return { default: module.ExportGeometryModal };
+});
 
 /** Mapbox GL map with clustered place point markers. */
 export function MapView({
@@ -275,11 +286,13 @@ export function MapView({
         />
       ) : null}
       {exportModalOpen ? (
-        <ExportGeometryModal
-          key={exportModalKey}
-          onClose={handleCloseExportModal}
-          open
-        />
+        <Suspense fallback={null}>
+          <ExportGeometryModal
+            key={exportModalKey}
+            onClose={handleCloseExportModal}
+            open
+          />
+        </Suspense>
       ) : null}
     </div>
   );

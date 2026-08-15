@@ -1,9 +1,4 @@
-import type {
-  OverpassAttemptEvent,
-  OverpassAttemptListener,
-  OverpassAttemptStatus,
-  OverpassResponse,
-} from "places-core";
+import type { OverpassAttemptListener, OverpassResponse } from "places-core";
 import {
   OVERPASS_ATTEMPT_TIMEOUT_SECONDS,
   OVERPASS_CLIENT_TIMEOUT_SECONDS,
@@ -23,7 +18,7 @@ export type {
   OverpassAttemptEvent,
   OverpassAttemptListener,
   OverpassAttemptStatus,
-};
+} from "places-core";
 
 /**
  * Low-level Overpass interpreter client.

@@ -471,11 +471,11 @@ describe("OverpassHttpClient failover backoff", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const controller = new AbortController();
-    const sleep: OverpassSleep = async (_ms, signal) => {
+    const sleep: OverpassSleep = (_ms, signal) => {
       controller.abort();
-      throw (
+      return Promise.reject(
         signal?.reason ??
-        new DOMException("The operation was aborted.", "AbortError")
+          new DOMException("The operation was aborted.", "AbortError"),
       );
     };
 

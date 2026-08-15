@@ -133,12 +133,16 @@ describe("createRequestListener rate limits", () => {
       config,
       services,
       async (baseUrl) => {
-        for (let i = 0; i < 5; i += 1) {
-          const live = await fetch(`${baseUrl}/health/live`);
-          const ready = await fetch(`${baseUrl}/health/ready`);
-          expect(live.status).toBe(200);
-          expect(ready.status).toBe(200);
-        }
+        await Promise.all(
+          Array.from({ length: 5 }, async () => {
+            const [live, ready] = await Promise.all([
+              fetch(`${baseUrl}/health/live`),
+              fetch(`${baseUrl}/health/ready`),
+            ]);
+            expect(live.status).toBe(200);
+            expect(ready.status).toBe(200);
+          }),
+        );
       },
       limiter,
     );

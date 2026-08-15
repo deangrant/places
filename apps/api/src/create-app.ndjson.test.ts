@@ -21,6 +21,10 @@ const VALID_SEARCH = {
   countryCode: "us",
 };
 
+const APPLICATION_JSON = /application\/json/;
+const APPLICATION_NDJSON = /application\/x-ndjson/;
+const UPSTREAM_UNAVAILABLE_TYPE = /\/upstream-unavailable$/;
+
 function httpTestConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
   return testConfig({
     rateLimit: GENEROUS_RATE_LIMIT,
@@ -63,7 +67,7 @@ describe("createRequestListener NDJSON progress", () => {
         method: "POST",
       });
       expect(response.status).toBe(200);
-      expect(response.headers.get("Content-Type")).toMatch(/application\/json/);
+      expect(response.headers.get("Content-Type")).toMatch(APPLICATION_JSON);
       await expect(response.json()).resolves.toEqual(searchResult);
     });
   });
@@ -81,10 +85,10 @@ describe("createRequestListener NDJSON progress", () => {
       status: "started",
     };
     const services = mockServices({
-      search: async (_criteria, _signal, onAttempt) => {
+      search: (_criteria, _signal, onAttempt) => {
         onAttempt?.(attempt);
         onAttempt?.({ ...attempt, status: "succeeded" });
-        return searchResult;
+        return Promise.resolve(searchResult);
       },
     });
 
@@ -99,9 +103,7 @@ describe("createRequestListener NDJSON progress", () => {
         method: "POST",
       });
       expect(response.status).toBe(200);
-      expect(response.headers.get("Content-Type")).toMatch(
-        /application\/x-ndjson/,
-      );
+      expect(response.headers.get("Content-Type")).toMatch(APPLICATION_NDJSON);
       const lines = await readNdjsonLines(response);
       expect(lines).toEqual([
         { type: "overpassAttempt", ...attempt },
@@ -113,14 +115,16 @@ describe("createRequestListener NDJSON progress", () => {
 
   it("ends an NDJSON stream with a problem line on domain failure", async () => {
     const services = mockServices({
-      search: async (_criteria, _signal, onAttempt) => {
+      search: (_criteria, _signal, onAttempt) => {
         onAttempt?.({
           endpoint: "https://overpass.example/api/interpreter",
           hostname: "overpass.example",
           index: 0,
           status: "started",
         });
-        throw new Error("Could not reach the Overpass API. Try again.");
+        return Promise.reject(
+          new Error("Could not reach the Overpass API. Try again."),
+        );
       },
     });
 
@@ -143,7 +147,7 @@ describe("createRequestListener NDJSON progress", () => {
       });
       expect(lines.at(-1)).toMatchObject({
         detail: "Could not reach the Overpass API. Try again.",
-        problemType: expect.stringMatching(/\/upstream-unavailable$/),
+        problemType: expect.stringMatching(UPSTREAM_UNAVAILABLE_TYPE),
         status: 502,
         type: "problem",
       });
@@ -158,9 +162,11 @@ describe("createRequestListener NDJSON progress", () => {
       status: "started",
     };
     const services = mockServices({
-      search: async (_criteria, _signal, onAttempt) => {
+      search: (_criteria, _signal, onAttempt) => {
         onAttempt?.(attempt);
-        throw new DOMException("The operation was aborted.", "AbortError");
+        return Promise.reject(
+          new DOMException("The operation was aborted.", "AbortError"),
+        );
       },
     });
 

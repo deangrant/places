@@ -121,6 +121,7 @@ export class PlaceOverpassPipeline {
       if (!isFiniteBBox(admin.boundingBox)) {
         throw new Error(
           "Could not resolve that location. Try a different city, region, or country.",
+          { cause: error },
         );
       }
       return {

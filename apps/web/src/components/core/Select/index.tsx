@@ -150,6 +150,75 @@ export function Select({
     [activeIndex, choose, closeMenu, entries, open, openMenu],
   );
 
+  const handleListMouseDown = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      event.preventDefault();
+    },
+    [],
+  );
+
+  const handleListClick = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      const target = (event.target as HTMLElement).closest<HTMLElement>(
+        "[data-option-value]",
+      );
+      if (!target) {
+        return;
+      }
+      choose(target.dataset.optionValue ?? "");
+    },
+    [choose],
+  );
+
+  const handleListMouseOver = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      const target = (event.target as HTMLElement).closest<HTMLElement>(
+        "[data-option-index]",
+      );
+      if (!target) {
+        return;
+      }
+      const index = Number(target.dataset.optionIndex);
+      if (!Number.isNaN(index)) {
+        setActiveIndex(index);
+      }
+    },
+    [],
+  );
+
+  const handleListFocus = useCallback(
+    (event: ReactFocusEvent<HTMLDivElement>) => {
+      const target = (event.target as HTMLElement).closest<HTMLElement>(
+        "[data-option-index]",
+      );
+      if (!target) {
+        return;
+      }
+      const index = Number(target.dataset.optionIndex);
+      if (!Number.isNaN(index)) {
+        setActiveIndex(index);
+      }
+    },
+    [],
+  );
+
+  const handleListKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+      const target = (event.target as HTMLElement).closest<HTMLElement>(
+        "[data-option-value]",
+      );
+      if (!target) {
+        return;
+      }
+      event.preventDefault();
+      choose(target.dataset.optionValue ?? "");
+    },
+    [choose],
+  );
+
   const activeOptionId =
     open && activeIndex >= 0 ? optionId(listId, activeIndex) : undefined;
 
@@ -174,6 +243,7 @@ export function Select({
           id={id}
           onClick={handleTriggerClick}
           onKeyDown={handleTriggerKeyDown}
+          role="combobox"
           type="button"
         >
           <span className={styles.triggerLabel}>{displayLabel}</span>
@@ -192,12 +262,21 @@ export function Select({
       </div>
 
       {open ? (
-        <ul className={styles.list} id={listId} role="listbox">
+        <div
+          className={styles.list}
+          id={listId}
+          onClick={handleListClick}
+          onFocus={handleListFocus}
+          onKeyDown={handleListKeyDown}
+          onMouseDown={handleListMouseDown}
+          onMouseOver={handleListMouseOver}
+          role="listbox"
+        >
           {entries.map((entry, index) => {
             const selectedOption = entry.value === value;
             const active = index === activeIndex;
             return (
-              <li
+              <div
                 aria-selected={selectedOption}
                 className={[
                   styles.item,
@@ -206,26 +285,18 @@ export function Select({
                 ]
                   .filter(Boolean)
                   .join(" ")}
+                data-option-index={index}
+                data-option-value={entry.value}
                 id={optionId(listId, index)}
                 key={`${entry.value || "empty"}-${entry.label}`}
-                onClick={() => choose(entry.value)}
-                onKeyDown={(event: ReactKeyboardEvent<HTMLLIElement>) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    choose(entry.value);
-                  }
-                }}
-                onMouseDown={(event: ReactMouseEvent<HTMLLIElement>) => {
-                  event.preventDefault();
-                }}
-                onMouseEnter={() => setActiveIndex(index)}
                 role="option"
+                tabIndex={-1}
               >
                 {entry.label}
-              </li>
+              </div>
             );
           })}
-        </ul>
+        </div>
       ) : null}
     </div>
   );
