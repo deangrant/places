@@ -1,9 +1,13 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { Button } from "@/components/core/Button";
 import { Input } from "@/components/core/Input";
 import { usePlaces } from "@/contexts/PlacesContext";
 import styles from "./index.module.css";
 import type { ResultRowProps, ResultsListProps } from "./index.types";
+import { useFixedVirtualList } from "./use-fixed-virtual-list";
+
+/** Fixed row height for virtualization (matches `.row` min-height). */
+const RESULT_ROW_HEIGHT_PX = 72;
 
 /** Compact Places results list with row selection and address filter. */
 export function ResultsList({
@@ -13,6 +17,13 @@ export function ResultsList({
   onQueryChange,
 }: ResultsListProps) {
   const { selectedPlaceId, selectPlace, truncated } = usePlaces();
+  const listRef = useRef<HTMLElement>(null);
+  const { totalHeight, virtualItems } = useFixedVirtualList({
+    count: places.length,
+    overscan: 8,
+    rowHeight: RESULT_ROW_HEIGHT_PX,
+    scrollElementRef: listRef,
+  });
 
   const handleClear = useCallback(() => {
     onQueryChange("");
@@ -61,16 +72,36 @@ export function ResultsList({
             : "No places yet. Choose filters and run a search."}
         </div>
       ) : (
-        <ul className={styles.list}>
-          {places.map((place) => (
-            <ResultRow
-              key={place.id}
-              onSelect={selectPlace}
-              place={place}
-              selected={place.id === selectedPlaceId}
-            />
-          ))}
-        </ul>
+        <section
+          aria-label="Search results"
+          className={styles.list}
+          ref={listRef}
+        >
+          <ul className={styles.listInner} style={{ height: totalHeight }}>
+            {virtualItems.map((item) => {
+              const place = places[item.index];
+              if (!place) {
+                return null;
+              }
+              return (
+                <li
+                  className={styles.listRow}
+                  key={place.id}
+                  style={{
+                    height: RESULT_ROW_HEIGHT_PX,
+                    transform: `translateY(${item.start}px)`,
+                  }}
+                >
+                  <ResultRow
+                    onSelect={selectPlace}
+                    place={place}
+                    selected={place.id === selectedPlaceId}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
     </div>
   );
@@ -92,20 +123,18 @@ function ResultRow({ place, selected, onSelect }: ResultRowProps) {
     .join(", ");
 
   return (
-    <li>
-      <button
-        className={[styles.row, selected ? styles.selected : undefined]
-          .filter(Boolean)
-          .join(" ")}
-        onClick={handleClick}
-        type="button"
-      >
-        <span className={styles.name}>
-          {place.locationName ?? "Unnamed place"}
-        </span>
-        {meta ? <span className={styles.meta}>{meta}</span> : null}
-        {location ? <span className={styles.location}>{location}</span> : null}
-      </button>
-    </li>
+    <button
+      className={[styles.row, selected ? styles.selected : undefined]
+        .filter(Boolean)
+        .join(" ")}
+      onClick={handleClick}
+      type="button"
+    >
+      <span className={styles.name}>
+        {place.locationName ?? "Unnamed place"}
+      </span>
+      {meta ? <span className={styles.meta}>{meta}</span> : null}
+      {location ? <span className={styles.location}>{location}</span> : null}
+    </button>
   );
 }

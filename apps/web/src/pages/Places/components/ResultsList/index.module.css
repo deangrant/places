@@ -43,12 +43,28 @@
 }
 
 .list {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   padding: 0;
   margin: 0;
   overflow: auto;
+}
+
+.listInner {
+  position: relative;
+  width: 100%;
+  padding: 0;
+  margin: 0;
   list-style: none;
+}
+
+.listRow {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  box-sizing: border-box;
 }
 
 .row {
@@ -57,6 +73,7 @@
   gap: 0.15rem;
   align-items: flex-start;
   width: 100%;
+  min-height: 72px;
   padding: 0.7rem var(--space-3);
   margin: 0;
   color: inherit;
