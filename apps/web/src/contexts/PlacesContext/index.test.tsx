@@ -140,16 +140,22 @@ describe("PlacesProvider", () => {
     expect(result.current.error).toBeNull();
   });
 
-  it("clears truncated on search failure", async () => {
+  it("retains last good places and truncated on search failure", async () => {
+    const priorPlace = makePlace({ id: "way/1" });
+    let rejectSecond!: (reason?: unknown) => void;
+    const secondSearch = new Promise<never>((_resolve, reject) => {
+      rejectSecond = reject;
+    });
+
     const placeSearch: IPlaceSearchService = {
       search: vi
         .fn()
         .mockResolvedValueOnce({
-          places: [makePlace({ id: "way/1" })],
+          places: [priorPlace],
           scope: {},
           truncated: true,
         })
-        .mockRejectedValueOnce(new Error("boom")),
+        .mockImplementationOnce(() => secondSearch),
     };
 
     const { result } = renderHook(() => usePlaces(), {
@@ -160,13 +166,25 @@ describe("PlacesProvider", () => {
       await result.current.runSearch();
     });
     expect(result.current.truncated).toBe(true);
+    expect(result.current.places).toEqual([priorPlace]);
+
+    let pending!: Promise<void>;
+    act(() => {
+      pending = result.current.runSearch();
+    });
+    expect(result.current.loading).toBe(true);
+    expect(result.current.places).toEqual([priorPlace]);
+    expect(result.current.truncated).toBe(true);
 
     await act(async () => {
-      await result.current.runSearch();
+      rejectSecond(new Error("boom"));
+      await pending;
     });
-    expect(result.current.truncated).toBe(false);
-    expect(result.current.places).toEqual([]);
+
+    expect(result.current.truncated).toBe(true);
+    expect(result.current.places).toEqual([priorPlace]);
     expect(result.current.error).toBe("boom");
+    expect(result.current.loading).toBe(false);
   });
 
   it("cancels an in-flight search and clears loading without an error", async () => {

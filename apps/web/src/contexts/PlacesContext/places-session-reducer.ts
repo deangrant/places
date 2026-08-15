@@ -84,11 +84,7 @@ export function placesSessionReducer(
     case "search/failed": {
       return {
         ...state,
-        boundsToFit: null,
         error: action.message,
-        places: [],
-        selectedPlaceId: null,
-        truncated: false,
       };
     }
     case "search/finished": {
@@ -101,9 +97,6 @@ export function placesSessionReducer(
         error: null,
         loading: true,
         overpassAttempts: [],
-        places: [],
-        selectedPlaceId: null,
-        truncated: false,
       };
     }
     case "search/succeeded": {
