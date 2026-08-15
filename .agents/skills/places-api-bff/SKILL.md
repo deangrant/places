@@ -105,6 +105,9 @@ Do not add new test/build frameworks for the split.
   logic.
 - Reject unknown properties when practical (`additionalProperties`-style).
 - Cap body size; oversized payloads **must** return **413**.
+- Trim optional criteria strings; empty/whitespace values **must** be treated as
+  absent. Enforce per-field length caps (body size alone is not enough to stop
+  Overpass QL bloat from huge string fields).
 - Malformed JSON **must** return **400**; semantic validation failures **must**
   return **422** with field `errors` (see §7).
 - Overpass QL construction **must** escape/allowlist inputs so user strings

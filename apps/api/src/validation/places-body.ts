@@ -5,6 +5,11 @@ import { type ProblemDetails, problem } from "../http/problem.js";
 const COUNTRY_CODE_PATTERN = /^[A-Za-z]{2}$/;
 const categoryTaxonomy = new CategoryTaxonomy();
 
+/** Max length for free-text criteria fields after trim. */
+const MAX_FREE_TEXT_LENGTH = 200;
+/** Max length for taxonomy / OSM key id fields after trim. */
+const MAX_ID_LENGTH = 64;
+
 const GEOMETRY_TYPES = new Set<PlaceGeometryType>([
   "POINT",
   "POLYGON",
@@ -65,14 +70,26 @@ export function validatePlaceSearchCriteria(body: unknown): CriteriaValidation {
 
   const criteria: PlaceSearchCriteria = {};
 
-  assignOptionalString(body, "brand", criteria, errors);
-  assignOptionalString(body, "categoryId", criteria, errors);
-  assignOptionalString(body, "city", criteria, errors);
-  assignOptionalString(body, "countryCode", criteria, errors);
-  assignOptionalString(body, "nameContains", criteria, errors);
-  assignOptionalString(body, "osmTagKey", criteria, errors);
-  assignOptionalString(body, "osmTagValue", criteria, errors);
-  assignOptionalString(body, "region", criteria, errors);
+  assignOptionalString(body, "brand", criteria, errors, MAX_FREE_TEXT_LENGTH);
+  assignOptionalString(body, "categoryId", criteria, errors, MAX_ID_LENGTH);
+  assignOptionalString(body, "city", criteria, errors, MAX_FREE_TEXT_LENGTH);
+  assignOptionalString(body, "countryCode", criteria, errors, MAX_ID_LENGTH);
+  assignOptionalString(
+    body,
+    "nameContains",
+    criteria,
+    errors,
+    MAX_FREE_TEXT_LENGTH,
+  );
+  assignOptionalString(body, "osmTagKey", criteria, errors, MAX_ID_LENGTH);
+  assignOptionalString(
+    body,
+    "osmTagValue",
+    criteria,
+    errors,
+    MAX_FREE_TEXT_LENGTH,
+  );
+  assignOptionalString(body, "region", criteria, errors, MAX_FREE_TEXT_LENGTH);
 
   if (
     criteria.categoryId &&
@@ -91,8 +108,8 @@ export function validatePlaceSearchCriteria(body: unknown): CriteriaValidation {
     criteria.countryCode = criteria.countryCode.toUpperCase();
   }
 
-  const key = criteria.osmTagKey?.trim() ?? "";
-  const value = criteria.osmTagValue?.trim() ?? "";
+  const key = criteria.osmTagKey ?? "";
+  const value = criteria.osmTagValue ?? "";
   if (Boolean(key) !== Boolean(value)) {
     errors.osmTagKey = ["set both osmTagKey and osmTagValue, or clear them"];
     errors.osmTagValue = ["set both osmTagKey and osmTagValue, or clear them"];
@@ -196,6 +213,7 @@ function assignOptionalString(
   key: string,
   target: PlaceSearchCriteria,
   errors: Record<string, string[]>,
+  maxLength: number,
 ): void {
   if (!(key in body) || body[key] === undefined) {
     return;
@@ -204,5 +222,13 @@ function assignOptionalString(
     errors[key] = ["must be a string"];
     return;
   }
-  (target as Record<string, string | undefined>)[key] = body[key];
+  const trimmed = body[key].trim();
+  if (trimmed === "") {
+    return;
+  }
+  if (trimmed.length > maxLength) {
+    errors[key] = [`must be at most ${maxLength} characters`];
+    return;
+  }
+  (target as Record<string, string | undefined>)[key] = trimmed;
 }

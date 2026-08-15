@@ -45,6 +45,49 @@ describe("validatePlaceSearchCriteria", () => {
       );
     }
   });
+
+  it("omits empty and whitespace-only optional strings", () => {
+    const result = validatePlaceSearchCriteria({
+      brand: "",
+      city: "  ",
+      countryCode: "us",
+      nameContains: "\t",
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toEqual({ countryCode: "US" });
+      expect(result.value).not.toHaveProperty("brand");
+      expect(result.value).not.toHaveProperty("city");
+      expect(result.value).not.toHaveProperty("nameContains");
+    }
+  });
+
+  it("rejects free-text fields longer than 200 characters", () => {
+    const result = validatePlaceSearchCriteria({
+      countryCode: "us",
+      nameContains: "a".repeat(201),
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.problem.status).toBe(422);
+      expect(result.problem.errors?.nameContains?.[0]).toBe(
+        "must be at most 200 characters",
+      );
+    }
+  });
+
+  it("rejects id fields longer than 64 characters", () => {
+    const result = validatePlaceSearchCriteria({
+      categoryId: "a".repeat(65),
+      countryCode: "us",
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.problem.errors?.categoryId?.[0]).toBe(
+        "must be at most 64 characters",
+      );
+    }
+  });
 });
 
 describe("validatePlaceExportBody", () => {
