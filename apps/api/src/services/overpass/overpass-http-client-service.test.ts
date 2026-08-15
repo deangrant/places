@@ -524,6 +524,12 @@ describe("overpass helpers", () => {
     expect(OVERPASS_ATTEMPT_TIMEOUT_SECONDS).toBeLessThan(
       OVERPASS_CLIENT_TIMEOUT_SECONDS,
     );
+    expect(OVERPASS_TIMEOUT_SECONDS).toBeLessThanOrEqual(
+      OVERPASS_ATTEMPT_TIMEOUT_SECONDS,
+    );
+    expect(OVERPASS_TIMEOUT_SECONDS).toBeLessThanOrEqual(
+      OVERPASS_CLIENT_TIMEOUT_SECONDS,
+    );
   });
 
   it("maps Overpass remarks to user-safe messages", () => {

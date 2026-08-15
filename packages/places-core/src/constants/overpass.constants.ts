@@ -12,9 +12,6 @@ export const NOMINATIM_ENDPOINT = "https://nominatim.openstreetmap.org/search";
 /** Soft cap on Overpass result elements. */
 export const RESULT_LIMIT = 2500;
 
-/** Overpass server-side timeout in seconds (QL `[timeout:…]`). */
-export const OVERPASS_TIMEOUT_SECONDS = 300;
-
 /**
  * Overall Places client / route AbortSignal and UI countdown budget in seconds.
  * Must remain larger than attempt timeout × max attempts so soft-timeout
@@ -27,6 +24,13 @@ export const OVERPASS_CLIENT_TIMEOUT_SECONDS = 180;
  * Shorter than the overall client budget so hanging endpoints can fail over.
  */
 export const OVERPASS_ATTEMPT_TIMEOUT_SECONDS = 50;
+
+/**
+ * Overpass server-side timeout in seconds (QL `[timeout:…]`).
+ * Must not exceed the per-attempt soft abort so abandoned interpreters stop
+ * roughly when the client moves on (failover or disconnect).
+ */
+export const OVERPASS_TIMEOUT_SECONDS = OVERPASS_ATTEMPT_TIMEOUT_SECONDS;
 
 /** Max interpreters tried per query after shuffle. */
 export const OVERPASS_MAX_ENDPOINT_ATTEMPTS = 3;

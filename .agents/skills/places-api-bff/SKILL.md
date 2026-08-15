@@ -153,6 +153,9 @@ Do not add new test/build frameworks for the split.
 - Per-interpreter soft timeout (`OVERPASS_ATTEMPT_TIMEOUT_SECONDS`) **must** be
   shorter than the overall route/UI budget (`OVERPASS_CLIENT_TIMEOUT_SECONDS`)
   so soft-timeout failover can run before the shared caller signal expires.
+- QL `[timeout:]` (`OVERPASS_TIMEOUT_SECONDS`) **must not** exceed
+  `OVERPASS_ATTEMPT_TIMEOUT_SECONDS`, so abandoned interpreters stop roughly
+  when the client fails over or disconnects.
 - Retry **only** transient failures (for example 406/408/429/502/503/504,
   network blips). Use exponential backoff with jitter when retrying.
 - Failover waits use bounded exponential backoff (`OVERPASS_RETRY_BASE_MS` /
@@ -167,7 +170,7 @@ Do not add new test/build frameworks for the split.
 
 - This pass **must** use synchronous request/response with documented Overpass
   and client timeouts (today ~180s overall client / ~50s per-attempt soft abort /
-  ~300s QL server hint).
+  ~50s QL server hint aligned with the attempt soft abort).
 - Graduate to **202** + job resources only when hosting cannot hold the
   connection (for example Workers wall-clock) or public SLAs require it.
 - Do **not** half-implement webhooks or job polling in this pass.
