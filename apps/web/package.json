@@ -2,6 +2,7 @@
   "dependencies": {
     "@fontsource/sora": "catalog:",
     "mapbox-gl": "catalog:",
+    "places-core": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:"
   },

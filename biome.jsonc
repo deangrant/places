@@ -40,6 +40,18 @@
       "preset": "recommended"
     }
   },
+  "overrides": [
+    {
+      "includes": ["packages/*/src/index.ts"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noBarrelFile": "off"
+          }
+        }
+      }
+    }
+  ],
   "vcs": {
     "clientKind": "git",
     "enabled": true,

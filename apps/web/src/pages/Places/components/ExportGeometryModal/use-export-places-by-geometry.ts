@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useOverpassAttemptCountdown } from "@/pages/Places/use-overpass-attempt-countdown";
+import { useQueryCountdown } from "@/pages/Places/use-query-countdown";
 import { preparePlacesForGeometryExport } from "@/services/export/export-places-by-geometry-service";
 import {
   browserPlacesCsvDownloader,
   type IPlacesCsvDownloader,
 } from "@/services/export/places-csv-export-service";
-import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client-service";
-import type { IPlaceGeometryExporter } from "@/services/places/place-geometry-export-service";
+import type { IPlaceGeometryExporter } from "@/services/http/http-places-api-client";
 import type {
   PlaceGeometryType,
   PlaceSearchCriteria,
 } from "@/types/places.types";
-import { mergeOverpassAttempt } from "@/utils/merge-overpass-attempt";
 
 /**
  * Options for the geometry CSV export hook.
@@ -39,18 +37,16 @@ export interface UseExportPlacesByGeometryResult {
   canExport: (geometryType: PlaceGeometryType | null) => boolean;
   /** Last export error message, or null. */
   error: string | null;
-  /** True while an export Overpass request is in flight. */
+  /** True while an export API request is in flight. */
   exporting: boolean;
   /** Starts export for the given geometry type. */
   handleExport: (geometryType: PlaceGeometryType) => void;
-  /** Live Overpass interpreter attempts for the in-flight export. */
-  overpassAttempts: OverpassAttemptEvent[];
   /** Soft timeout countdown seconds remaining. */
   remainingSeconds: number;
 }
 
 /**
- * Manages geometry CSV export state, Overpass progress, and download side effects.
+ * Manages geometry CSV export state and download side effects.
  * @param options Criteria, exporter, and completion callbacks.
  */
 export function useExportPlacesByGeometry({
@@ -62,15 +58,9 @@ export function useExportPlacesByGeometry({
 }: UseExportPlacesByGeometryOptions): UseExportPlacesByGeometryResult {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [overpassAttempts, setOverpassAttempts] = useState<
-    OverpassAttemptEvent[]
-  >([]);
   const abortRef = useRef<AbortController | null>(null);
 
-  const remainingSeconds = useOverpassAttemptCountdown({
-    active: exporting,
-    attempts: overpassAttempts,
-  });
+  const remainingSeconds = useQueryCountdown({ active: exporting });
 
   useEffect(
     () => () => {
@@ -97,19 +87,15 @@ export function useExportPlacesByGeometry({
 
       setExporting(true);
       setError(null);
-      setOverpassAttempts([]);
       const controller = new AbortController();
       abortRef.current = controller;
 
       preparePlacesForGeometryExport(
         criteria,
         geometryType,
-        (exportCriteria, type, signal, onAttempt) =>
-          placeExport.exportByGeometry(exportCriteria, type, signal, onAttempt),
+        (exportCriteria, type, signal) =>
+          placeExport.exportByGeometry(exportCriteria, type, signal),
         controller.signal,
-        (attempt) => {
-          setOverpassAttempts((prev) => mergeOverpassAttempt(prev, attempt));
-        },
       )
         .then((prepared) => {
           if (prepared.length === 0) {
@@ -135,7 +121,6 @@ export function useExportPlacesByGeometry({
             abortRef.current = null;
           }
           setExporting(false);
-          setOverpassAttempts([]);
         });
     },
     [criteria, csvDownloader, exporting, onClose, onExported, placeExport],
@@ -147,7 +132,6 @@ export function useExportPlacesByGeometry({
     error,
     exporting,
     handleExport,
-    overpassAttempts,
     remainingSeconds,
   };
 }

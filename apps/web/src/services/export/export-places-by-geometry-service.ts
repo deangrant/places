@@ -1,4 +1,3 @@
-import type { OverpassAttemptListener } from "@/services/overpass/overpass-http-client-service";
 import type {
   Place,
   PlaceGeometryType,
@@ -13,17 +12,15 @@ export const EXPORT_GEOMETRY_TYPE_PRIORITY = [
 ] as const satisfies readonly PlaceGeometryType[];
 
 /**
- * Re-queries Overpass for places matching one export geometry type.
+ * Re-queries the Places API for places matching one export geometry type.
  * @param criteria Active search filters.
  * @param geometryType Effective export geometry type.
  * @param signal Optional abort signal.
- * @param onAttempt Optional Overpass endpoint progress callback.
  */
 export type ExportPlacesByGeometry = (
   criteria: PlaceSearchCriteria,
   geometryType: PlaceGeometryType,
   signal?: AbortSignal,
-  onAttempt?: OverpassAttemptListener,
 ) => Promise<Place[]>;
 
 /**
@@ -32,14 +29,12 @@ export type ExportPlacesByGeometry = (
  * @param geometryType Single geometry type selected in the modal.
  * @param exportByGeometry Search-service export requery.
  * @param signal Optional abort signal.
- * @param onAttempt Optional Overpass endpoint progress callback.
  */
 export function preparePlacesForGeometryExport(
   criteria: PlaceSearchCriteria,
   geometryType: PlaceGeometryType,
   exportByGeometry: ExportPlacesByGeometry,
   signal?: AbortSignal,
-  onAttempt?: OverpassAttemptListener,
 ): Promise<Place[]> {
-  return exportByGeometry(criteria, geometryType, signal, onAttempt);
+  return exportByGeometry(criteria, geometryType, signal);
 }

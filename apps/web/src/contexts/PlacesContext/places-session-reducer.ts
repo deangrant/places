@@ -1,6 +1,4 @@
-import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client-service";
 import type { BBox, Place } from "@/types/places.types";
-import { mergeOverpassAttempt } from "@/utils/merge-overpass-attempt";
 
 /**
  * Search/session slice for PlacesProvider (selection, results, loading, errors).
@@ -12,8 +10,6 @@ export interface PlacesSessionState {
   error: string | null;
   /** True while a Places search is in flight. */
   loading: boolean;
-  /** Live Overpass interpreter attempts for the in-flight search. */
-  overpassAttempts: OverpassAttemptEvent[];
   /** Places from the latest successful search. */
   places: Place[];
   /** Selected place id, or null when none. */
@@ -27,7 +23,6 @@ export const initialPlacesSessionState: PlacesSessionState = {
   boundsToFit: null,
   error: null,
   loading: false,
-  overpassAttempts: [],
   places: [],
   selectedPlaceId: null,
   truncated: false,
@@ -39,7 +34,6 @@ export const initialPlacesSessionState: PlacesSessionState = {
 export type PlacesSessionAction =
   | { type: "bounds/clear" }
   | { type: "bounds/set"; bounds: BBox | null }
-  | { type: "search/attempt"; attempt: OverpassAttemptEvent }
   | { type: "search/failed"; message: string }
   | { type: "search/finished" }
   | {
@@ -72,15 +66,6 @@ export function placesSessionReducer(
     case "bounds/set": {
       return { ...state, boundsToFit: action.bounds };
     }
-    case "search/attempt": {
-      return {
-        ...state,
-        overpassAttempts: mergeOverpassAttempt(
-          state.overpassAttempts,
-          action.attempt,
-        ),
-      };
-    }
     case "search/failed": {
       return {
         ...state,
@@ -88,7 +73,7 @@ export function placesSessionReducer(
       };
     }
     case "search/finished": {
-      return { ...state, loading: false, overpassAttempts: [] };
+      return { ...state, loading: false };
     }
     case "search/started": {
       return {
@@ -96,7 +81,6 @@ export function placesSessionReducer(
         boundsToFit: null,
         error: null,
         loading: true,
-        overpassAttempts: [],
       };
     }
     case "search/succeeded": {

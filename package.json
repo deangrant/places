@@ -15,10 +15,12 @@
   "packageManager": "pnpm@11.8.0",
   "private": true,
   "scripts": {
-    "build": "pnpm --filter web build",
+    "build": "pnpm --filter places-core build && pnpm --filter api build && pnpm --filter web build",
     "check": "biome check .",
     "check:fix": "biome check --write .",
-    "dev": "pnpm --filter web dev",
+    "dev": "pnpm --parallel --filter api --filter web dev",
+    "dev:api": "pnpm --filter api dev",
+    "dev:web": "pnpm --filter web dev",
     "doctor": "react-doctor",
     "doctor:changed": "react-doctor --verbose --scope changed --yes",
     "doctor:full": "react-doctor --verbose --yes",
@@ -29,7 +31,7 @@
     "lint:fix": "biome lint --write .",
     "lint:lockfile": "pnpm install --frozen-lockfile",
     "preview": "pnpm --filter web preview",
-    "test": "pnpm --filter web test"
+    "test": "pnpm --filter places-core test && pnpm --filter api test && pnpm --filter web test"
   },
   "type": "module",
   "version": "1.0.0"

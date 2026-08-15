@@ -2,6 +2,7 @@
 # package.json.
 packages:
   - "apps/*"
+  - "packages/*"
 
 # Shared dependency versions referenced by packages via `catalog:`.
 catalog:
@@ -68,3 +69,4 @@ trustPolicy: no-downgrade
 # version is safe (e.g. missing provenance is accidental, not a takeover).
 trustPolicyExclude:
   - semver@6.3.1 # Required by react-doctor@0.9.1 as a transitive dependency.
+  - undici-types@6.21.0 # Required by @types/node for apps/api Node builtins typings.

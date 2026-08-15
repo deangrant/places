@@ -43,12 +43,7 @@ describe("preparePlacesForGeometryExport", () => {
       "POINT",
       exportByGeometry,
     );
-    expect(exportByGeometry).toHaveBeenCalledWith(
-      criteria,
-      "POINT",
-      undefined,
-      undefined,
-    );
+    expect(exportByGeometry).toHaveBeenCalledWith(criteria, "POINT", undefined);
     expect(result).toEqual(exported);
   });
 
@@ -63,7 +58,6 @@ describe("preparePlacesForGeometryExport", () => {
     expect(exportByGeometry).toHaveBeenCalledWith(
       criteria,
       "POLYGON",
-      undefined,
       undefined,
     );
     expect(result).toEqual(exported);

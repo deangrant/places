@@ -132,12 +132,6 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
       const result = await placeSearchRef.current.search(
         criteria,
         controller.signal,
-        (attempt) => {
-          if (searchRequestIdRef.current !== requestId) {
-            return;
-          }
-          dispatch({ attempt, type: "search/attempt" });
-        },
       );
       if (searchRequestIdRef.current !== requestId) {
         return;
@@ -188,7 +182,6 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
       fitResultsBounds,
       loading: session.loading,
       mapView,
-      overpassAttempts: session.overpassAttempts,
       places: session.places,
       runSearch,
       selectedPlace,
@@ -210,7 +203,6 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
       session.boundsToFit,
       session.error,
       session.loading,
-      session.overpassAttempts,
       session.places,
       session.selectedPlaceId,
       session.truncated,
@@ -239,7 +231,6 @@ export function usePlacesSearch(): PlacesSearchContextValue {
     criteria,
     error,
     loading,
-    overpassAttempts,
     places,
     runSearch,
     setCriteria,
@@ -250,7 +241,6 @@ export function usePlacesSearch(): PlacesSearchContextValue {
     criteria,
     error,
     loading,
-    overpassAttempts,
     places,
     runSearch,
     setCriteria,

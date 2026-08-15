@@ -5,8 +5,10 @@ import { PlacesProvider, usePlaces } from "@/contexts/PlacesContext";
 import { ServicesProvider } from "@/contexts/ServicesContext";
 import { SearchFilters } from "@/pages/Places/components/SearchFilters";
 import type { AppServices } from "@/services/app-services.types";
-import type { IPlaceGeometryExporter } from "@/services/places/place-geometry-export-service";
-import type { IPlaceSearchService } from "@/services/places/place-search-service";
+import type {
+  IPlaceGeometryExporter,
+  IPlaceSearchService,
+} from "@/services/http/http-places-api-client";
 import type {
   CategoryDefinition,
   PlaceSearchCriteria,

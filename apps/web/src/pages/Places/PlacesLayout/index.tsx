@@ -3,11 +3,10 @@ import { Button } from "@/components/core/Button";
 import { Spinner } from "@/components/core/Spinner";
 import { usePlaces } from "@/contexts/PlacesContext";
 import { MapView } from "@/pages/Places/components/MapView";
-import { OverpassQueryStatus } from "@/pages/Places/components/OverpassQueryStatus";
 import { PlaceDetail } from "@/pages/Places/components/PlaceDetail";
 import { ResultsList } from "@/pages/Places/components/ResultsList";
 import { SearchFilters } from "@/pages/Places/components/SearchFilters";
-import { useOverpassAttemptCountdown } from "@/pages/Places/use-overpass-attempt-countdown";
+import { useQueryCountdown } from "@/pages/Places/use-query-countdown";
 import { filterPlacesByAddress } from "@/utils/filter-places-by-address";
 import { formatCountdown } from "@/utils/format-countdown";
 import styles from "./index.module.css";
@@ -26,7 +25,6 @@ export function PlacesLayout() {
     selectedPlaceId,
     selectPlace,
     loading,
-    overpassAttempts,
   } = usePlaces();
 
   const showPanel = places.length > 0;
@@ -37,10 +35,7 @@ export function PlacesLayout() {
     [places, deferredAddressQuery],
   );
 
-  const remainingSeconds = useOverpassAttemptCountdown({
-    active: loading,
-    attempts: overpassAttempts,
-  });
+  const remainingSeconds = useQueryCountdown({ active: loading });
 
   useEffect(() => {
     if (loading) {
@@ -105,7 +100,6 @@ export function PlacesLayout() {
             <p className={styles.countdown}>
               Up to {formatCountdown(remainingSeconds)} remaining
             </p>
-            <OverpassQueryStatus attempts={overpassAttempts} />
             <Button onClick={cancelSearch} variant="ghost">
               Cancel
             </Button>

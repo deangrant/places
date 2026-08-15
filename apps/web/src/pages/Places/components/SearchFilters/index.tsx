@@ -1,3 +1,4 @@
+import { COUNTRY_OPTIONS, OSM_TAG_KEY_ALLOWLIST } from "places-core";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/core/Button";
@@ -5,8 +6,6 @@ import { Input } from "@/components/core/Input";
 import { Select } from "@/components/core/Select";
 import { Autocomplete } from "@/components/patterns/Autocomplete";
 import { FormField } from "@/components/patterns/FormField";
-import { COUNTRY_OPTIONS } from "@/constants/categories.constants";
-import { OSM_TAG_KEY_ALLOWLIST } from "@/constants/osm-tags.constants";
 import { usePlacesSearch } from "@/contexts/PlacesContext";
 import { useServices } from "@/contexts/ServicesContext";
 import styles from "./index.module.css";

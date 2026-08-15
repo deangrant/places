@@ -1,41 +1,41 @@
-import type { AppServices } from "@/services/app-services.types";
-import { NominatimAreaResolver } from "@/services/geocoding/nominatim-area-resolver-service";
-import { OverpassHttpClient } from "@/services/overpass/overpass-http-client-service";
-import { OsmPlaceNormalizer } from "@/services/places/osm-place-normalizer-service";
-import { PlaceGeometryExportService } from "@/services/places/place-geometry-export-service";
-import { PlaceOverpassPipeline } from "@/services/places/place-overpass-pipeline-service";
-import { PlaceQueryBuilder } from "@/services/places/place-query-builder-service";
-import { PlaceSearchService } from "@/services/places/place-search-service";
-import { BrandCatalog } from "@/services/taxonomy/brand-catalog-service";
-import { CategoryTaxonomy } from "@/services/taxonomy/category-taxonomy-service";
+import {
+  BrandCatalog,
+  CategoryTaxonomy,
+  type IBrandCatalog,
+  type ICategoryLookup,
+} from "places-core";
+import {
+  HttpPlacesApiClient,
+  type IPlaceGeometryExporter,
+  type IPlaceSearchService,
+  resolveApiBaseUrl,
+} from "@/services/http/http-places-api-client";
+
+/**
+ * Application service ports wired by the composition root.
+ * UI and contexts depend on this contract, not concrete adapters.
+ */
+export interface AppServices {
+  /** Brand autocomplete catalog. */
+  brandCatalog: IBrandCatalog;
+  /** Geometry export re-query for CSV downloads. */
+  placeExport: IPlaceGeometryExporter;
+  /** Places map search. */
+  placeSearch: IPlaceSearchService;
+  /** Industry taxonomy lookup for filters. */
+  taxonomy: ICategoryLookup;
+}
 
 /**
  * Builds a fresh Places app service graph for injection.
  * Call once at the React boundary; use again in tests for isolation.
  */
 export function createServices(): AppServices {
-  const taxonomy = new CategoryTaxonomy();
-  const brandCatalog = new BrandCatalog();
-  const overpass = new OverpassHttpClient();
-  const areaResolver = new NominatimAreaResolver();
-  const queryBuilder = new PlaceQueryBuilder(taxonomy);
-  const normalizer = new OsmPlaceNormalizer(taxonomy);
-  const pipeline = new PlaceOverpassPipeline(
-    overpass,
-    queryBuilder,
-    areaResolver,
-  );
-  const placeSearch = new PlaceSearchService(pipeline, normalizer);
-  const placeExport = new PlaceGeometryExportService(
-    pipeline,
-    normalizer,
-    normalizer,
-  );
-
+  const api = new HttpPlacesApiClient(resolveApiBaseUrl());
   return {
-    brandCatalog,
-    placeExport,
-    placeSearch,
-    taxonomy,
+    brandCatalog: new BrandCatalog(),
+    placeExport: api,
+    placeSearch: api,
+    taxonomy: new CategoryTaxonomy(),
   };
 }

@@ -1,0 +1,21 @@
+{
+  "name": "api",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "pnpm --filter places-core build && tsc -p tsconfig.build.json && node --watch dist/server.js",
+    "start": "node dist/server.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "places-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.15",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

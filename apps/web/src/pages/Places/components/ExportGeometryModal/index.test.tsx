@@ -11,8 +11,10 @@ import { PlacesProvider } from "@/contexts/PlacesContext";
 import { ServicesProvider } from "@/contexts/ServicesContext";
 import { ExportGeometryModal } from "@/pages/Places/components/ExportGeometryModal";
 import type { AppServices } from "@/services/app-services.types";
-import type { IPlaceGeometryExporter } from "@/services/places/place-geometry-export-service";
-import type { IPlaceSearchService } from "@/services/places/place-search-service";
+import type {
+  IPlaceGeometryExporter,
+  IPlaceSearchService,
+} from "@/services/http/http-places-api-client";
 import type { Place } from "@/types/places.types";
 
 const downloadPlacesCsv = vi.hoisted(() => vi.fn());
@@ -149,7 +151,6 @@ describe("ExportGeometryModal", () => {
       {},
       "POINT",
       expect.any(AbortSignal),
-      expect.any(Function),
     );
     expect(onExported).toHaveBeenCalledWith("POINT");
     expect(onClose).toHaveBeenCalled();
@@ -177,7 +178,6 @@ describe("ExportGeometryModal", () => {
       {},
       "POLYGON",
       expect.any(AbortSignal),
-      expect.any(Function),
     );
     expect(downloadPlacesCsv).toHaveBeenCalledWith([polygonPlace]);
   });
