@@ -19,12 +19,31 @@ const coffee: CategoryDefinition = {
   topCategory: "Food Services",
 };
 
+const weirdKeys: CategoryDefinition = {
+  id: "weird-keys",
+  subCategory: "Weird Keys",
+  tags: [
+    { key: 'foo"bar', value: "baz" },
+    { key: "a\\b", value: "c" },
+  ],
+  topCategory: "Test",
+};
+
 const taxonomy: ICategoryLookup = {
-  getById: (id) => (id === coffee.id ? coffee : undefined),
-  list: () => [coffee],
+  getById: (id) => {
+    if (id === coffee.id) {
+      return coffee;
+    }
+    if (id === weirdKeys.id) {
+      return weirdKeys;
+    }
+  },
+  list: () => [coffee, weirdKeys],
   listByTopCategory: (topCategory) =>
-    topCategory === coffee.topCategory ? [coffee] : [],
-  listTopCategories: () => [coffee.topCategory],
+    [coffee, weirdKeys].filter(
+      (category) => category.topCategory === topCategory,
+    ),
+  listTopCategories: () => [coffee.topCategory, weirdKeys.topCategory],
 };
 
 describe("toOverpassAreaId", () => {
@@ -80,6 +99,21 @@ describe("PlaceQueryBuilder", () => {
     expect(ql).toContain('["brand"~"^A\\.B\\*C\\?$",i]');
     expect(ql).toContain('["name"~"foo\\.bar",i]');
     expect(ql).toContain('nwr["amenity"="cof\\"fee"]');
+  });
+
+  it("escapes taxonomy and OSM tag keys inside Overpass string literals", () => {
+    const categoryQl = builder.build(
+      { categoryId: "weird-keys" },
+      { areaId: 1 },
+    );
+    expect(categoryQl).toContain('nwr["foo\\"bar"="baz"]');
+    expect(categoryQl).toContain('nwr["a\\\\b"="c"]');
+
+    const osmQl = builder.build(
+      { osmTagKey: "amenity", osmTagValue: 'x"y' },
+      { areaId: 1 },
+    );
+    expect(osmQl).toContain('nwr["amenity"="x\\"y"]');
   });
 
   it("emits out center by default and out geom when requested", () => {

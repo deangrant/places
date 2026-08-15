@@ -130,7 +130,7 @@ export class PlaceQueryBuilder implements IPlaceQueryBuilder {
       }
       return category.tags.map(
         (tag) =>
-          `nwr["${tag.key}"="${escapeOverpass(tag.value)}"]${osmTagClause}${extras}`,
+          `nwr["${escapeOverpass(tag.key)}"="${escapeOverpass(tag.value)}"]${osmTagClause}${extras}`,
       );
     }
 
@@ -159,7 +159,7 @@ export class PlaceQueryBuilder implements IPlaceQueryBuilder {
     if (!isAllowedOsmTagKey(trimmedKey)) {
       throw new Error(`Unsupported OSM tag key: ${trimmedKey}`);
     }
-    return `["${trimmedKey}"="${escapeOverpass(trimmedValue)}"]`;
+    return `["${escapeOverpass(trimmedKey)}"="${escapeOverpass(trimmedValue)}"]`;
   }
 
   /**
