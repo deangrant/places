@@ -9,6 +9,7 @@ import { useServices } from "@/contexts/ServicesContext";
 import { OverpassQueryStatus } from "@/pages/Places/components/OverpassQueryStatus";
 import { EXPORT_GEOMETRY_TYPE_PRIORITY } from "@/services/export/export-places-by-geometry";
 import type { PlaceGeometryType } from "@/types/places.types";
+import { formatCountdown } from "@/utils/format-countdown";
 import styles from "./index.module.css";
 import type { ExportGeometryModalProps } from "./index.types";
 import { useExportPlacesByGeometry } from "./use-export-places-by-geometry";
@@ -216,14 +217,4 @@ export function ExportGeometryModal({
         : null}
     </>
   );
-}
-
-/**
- * Formats remaining seconds as M:SS for the export timeout countdown.
- * @param totalSeconds Seconds left before the soft Overpass timeout.
- */
-function formatCountdown(totalSeconds: number): string {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }

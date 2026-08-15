@@ -9,6 +9,7 @@ import { PlaceDetail } from "@/pages/Places/components/PlaceDetail";
 import { ResultsList } from "@/pages/Places/components/ResultsList";
 import { SearchFilters } from "@/pages/Places/components/SearchFilters";
 import { filterPlacesByAddress } from "@/utils/filter-places-by-address";
+import { formatCountdown } from "@/utils/format-countdown";
 import styles from "./index.module.css";
 
 /** Page skeleton: filters, full-bleed map, and progressive side panel. */
@@ -135,14 +136,4 @@ export function PlacesLayout() {
       ) : null}
     </div>
   );
-}
-
-/**
- * Formats remaining seconds as M:SS for the search timeout countdown.
- * @param totalSeconds Seconds left before the soft Overpass timeout.
- */
-function formatCountdown(totalSeconds: number): string {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
