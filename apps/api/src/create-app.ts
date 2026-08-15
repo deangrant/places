@@ -77,19 +77,30 @@ async function handleRequest(
     const url = new URL(req.url ?? "/", "http://localhost");
     const path = url.pathname;
 
-    if (req.method === "GET" && path === "/health/live") {
-      sendJson(res, 200, { status: "ok" });
-      return;
-    }
-
-    if (req.method === "GET" && path === "/health/ready") {
-      sendJson(res, 200, {
-        checks: {
-          process: "ok",
-          upstream: "not_probed",
-        },
-        status: "ready",
-      });
+    if (path === "/health/live" || path === "/health/ready") {
+      if (req.method !== "GET") {
+        sendProblem(
+          res,
+          problem(
+            405,
+            "Method not allowed",
+            `${req.method ?? "UNKNOWN"} is not allowed for ${path}.`,
+            "/method-not-allowed",
+          ),
+        );
+        return;
+      }
+      if (path === "/health/live") {
+        sendJson(res, 200, { status: "ok" });
+      } else {
+        sendJson(res, 200, {
+          checks: {
+            process: "ok",
+            upstream: "not_probed",
+          },
+          status: "ready",
+        });
+      }
       return;
     }
 
@@ -103,12 +114,7 @@ async function handleRequest(
       return;
     }
 
-    if (
-      path === "/health/live" ||
-      path === "/health/ready" ||
-      path === "/places/search" ||
-      path === "/places/export"
-    ) {
+    if (path === "/places/search" || path === "/places/export") {
       sendProblem(
         res,
         problem(
