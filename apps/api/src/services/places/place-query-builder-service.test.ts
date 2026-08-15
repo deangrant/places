@@ -96,6 +96,28 @@ describe("PlaceQueryBuilder", () => {
     );
   });
 
+  it("throws when bbox corners are non-finite", () => {
+    expect(() =>
+      builder.build(
+        { nameContains: "cafe" },
+        {
+          bbox: {
+            east: 1,
+            north: 2,
+            south: 0,
+            west: Number.NaN,
+          },
+        },
+      ),
+    ).toThrow(MISSING_SCOPE_ERROR);
+  });
+
+  it("throws when areaId is non-finite", () => {
+    expect(() => builder.build({ brand: "X" }, { areaId: Number.NaN })).toThrow(
+      MISSING_SCOPE_ERROR,
+    );
+  });
+
   it("escapes Overpass string and regex metacharacters", () => {
     const ql = builder.build(
       {

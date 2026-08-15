@@ -27,6 +27,9 @@ export interface NominatimContact {
   userAgent: string;
 }
 
+const OSM_TYPES = new Set(["node", "way", "relation"]);
+const NOMINATIM_RESULT_LIMIT = 5;
+
 /**
  * Nominatim-backed admin area resolver for Overpass spatial scope.
  */
@@ -62,7 +65,7 @@ export class NominatimAreaResolver implements IAreaResolver {
     const url = new URL(this.endpoint);
     url.searchParams.set("format", "json");
     url.searchParams.set("addressdetails", "1");
-    url.searchParams.set("limit", "1");
+    url.searchParams.set("limit", String(NOMINATIM_RESULT_LIMIT));
     url.searchParams.set("email", this.contact.email);
 
     if (city) {
@@ -73,6 +76,7 @@ export class NominatimAreaResolver implements IAreaResolver {
     }
     if (countryCode) {
       url.searchParams.set("country", countryCode);
+      url.searchParams.set("countrycodes", countryCode.toLowerCase());
     }
 
     if (city) {
@@ -119,41 +123,114 @@ export class NominatimAreaResolver implements IAreaResolver {
       );
     }
 
-    const rows = (await response.json()) as NominatimRow[];
-    return rows.map(mapNominatimRow);
+    const payload: unknown = await response.json();
+    if (!Array.isArray(payload)) {
+      return [];
+    }
+
+    const results: GeocodeResult[] = [];
+    for (const row of payload) {
+      const mapped = tryMapNominatimRow(row);
+      if (mapped) {
+        results.push(mapped);
+      }
+    }
+    return results;
   }
 }
 
-interface NominatimRow {
-  address?: {
-    country_code?: string;
+/**
+ * Maps a Nominatim JSON row into the app geocode DTO when valid.
+ * @param row Unknown JSON row.
+ */
+export function tryMapNominatimRow(row: unknown): GeocodeResult | null {
+  if (!isPlainObject(row)) {
+    return null;
+  }
+
+  const osmType = row.osm_type;
+  if (typeof osmType !== "string" || !OSM_TYPES.has(osmType)) {
+    return null;
+  }
+
+  const osmId = Number(row.osm_id);
+  const lat = Number(row.lat);
+  const lon = Number(row.lon);
+  if (
+    !(Number.isFinite(osmId) && Number.isFinite(lat) && Number.isFinite(lon))
+  ) {
+    return null;
+  }
+
+  const bbox = parseBoundingBox(row.boundingbox);
+  if (!bbox) {
+    return null;
+  }
+
+  const displayName = row.display_name;
+  if (typeof displayName !== "string" || displayName.trim() === "") {
+    return null;
+  }
+
+  const address = isPlainObject(row.address) ? row.address : undefined;
+  const countryRaw = address?.country_code;
+  const countryCode =
+    typeof countryRaw === "string" ? countryRaw.toUpperCase() : undefined;
+
+  return {
+    boundingBox: bbox,
+    class: typeof row.class === "string" ? row.class : "",
+    countryCode,
+    displayName,
+    lat,
+    lon,
+    osmId,
+    osmType,
+    type: typeof row.type === "string" ? row.type : "",
   };
-  boundingbox: [string, string, string, string];
-  class: string;
-  display_name: string;
-  lat: string;
-  lon: string;
-  osm_id: number;
-  osm_type: string;
-  type: string;
 }
 
 /**
- * Maps a Nominatim JSON row into the app geocode DTO.
- * @param row Raw Nominatim payload row.
+ * Parses Nominatim boundingbox into a finite BBox with south &lt; north.
+ * @param value Raw boundingbox field.
  */
-function mapNominatimRow(row: NominatimRow): GeocodeResult {
-  const [south, north, west, east] = row.boundingbox.map(Number);
-  const bbox: BBox = { east, north, south, west };
-  return {
-    boundingBox: bbox,
-    class: row.class,
-    countryCode: row.address?.country_code?.toUpperCase(),
-    displayName: row.display_name,
-    lat: Number(row.lat),
-    lon: Number(row.lon),
-    osmId: row.osm_id,
-    osmType: row.osm_type,
-    type: row.type,
-  };
+function parseBoundingBox(value: unknown): BBox | null {
+  if (!Array.isArray(value) || value.length !== 4) {
+    return null;
+  }
+  const south = Number(value[0]);
+  const north = Number(value[1]);
+  const west = Number(value[2]);
+  const east = Number(value[3]);
+  if (
+    !(
+      Number.isFinite(south) &&
+      Number.isFinite(north) &&
+      Number.isFinite(west) &&
+      Number.isFinite(east)
+    )
+  ) {
+    return null;
+  }
+  if (!(south < north)) {
+    return null;
+  }
+  return { east, north, south, west };
+}
+
+/**
+ * True when every bbox corner is a finite number.
+ * @param bbox Bounding box to check.
+ */
+export function isFiniteBBox(bbox: BBox): boolean {
+  return (
+    Number.isFinite(bbox.south) &&
+    Number.isFinite(bbox.west) &&
+    Number.isFinite(bbox.north) &&
+    Number.isFinite(bbox.east)
+  );
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

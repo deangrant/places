@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { NominatimAreaResolver } from "./nominatim-area-resolver-service.js";
+import {
+  isFiniteBBox,
+  NominatimAreaResolver,
+  tryMapNominatimRow,
+} from "./nominatim-area-resolver-service.js";
 
 const HTTP_503_ERROR = /Location search failed \(HTTP 503\)/;
 
@@ -47,6 +51,72 @@ function nominatimRow(
   };
 }
 
+describe("tryMapNominatimRow", () => {
+  it("maps a valid Nominatim row", () => {
+    expect(tryMapNominatimRow(nominatimRow())).toEqual({
+      boundingBox: {
+        east: -122.1,
+        north: 47.8,
+        south: 47.4,
+        west: -122.5,
+      },
+      class: "boundary",
+      countryCode: "US",
+      displayName: "Seattle, Washington, USA",
+      lat: 47.6,
+      lon: -122.3,
+      osmId: 100,
+      osmType: "relation",
+      type: "administrative",
+    });
+  });
+
+  it("rejects non-numeric coordinates", () => {
+    expect(
+      tryMapNominatimRow(nominatimRow({ lat: "not-a-number", lon: "-122.3" })),
+    ).toBeNull();
+  });
+
+  it("rejects malformed bounding boxes", () => {
+    expect(
+      tryMapNominatimRow(
+        nominatimRow({
+          boundingbox: ["a", "b", "c", "d"] as unknown as [
+            string,
+            string,
+            string,
+            string,
+          ],
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      tryMapNominatimRow(
+        nominatimRow({
+          boundingbox: ["48", "47", "-122", "-121"] as [
+            string,
+            string,
+            string,
+            string,
+          ],
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it("rejects unknown osm types", () => {
+    expect(tryMapNominatimRow(nominatimRow({ osm_type: "other" }))).toBeNull();
+  });
+});
+
+describe("isFiniteBBox", () => {
+  it("rejects NaN corners", () => {
+    expect(
+      isFiniteBBox({ east: 1, north: 2, south: 0, west: Number.NaN }),
+    ).toBe(false);
+  });
+});
+
 describe("NominatimAreaResolver", () => {
   it("returns null when no geography parts are provided", async () => {
     const fetchMock = vi.fn();
@@ -54,6 +124,23 @@ describe("NominatimAreaResolver", () => {
     const resolver = new NominatimAreaResolver(TEST_CONTACT, TEST_ENDPOINT);
     await expect(resolver.resolveAdmin({})).resolves.toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("requests limit=5 and countrycodes when a country is set", async () => {
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = new URL(String(input));
+      expect(url.searchParams.get("limit")).toBe("5");
+      expect(url.searchParams.get("countrycodes")).toBe("us");
+      expect(url.searchParams.get("country")).toBe("US");
+      return {
+        json: async () => [nominatimRow()],
+        ok: true,
+      };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const resolver = new NominatimAreaResolver(TEST_CONTACT, TEST_ENDPOINT);
+    await resolver.resolveAdmin({ city: "Seattle", countryCode: "US" });
+    expect(fetchMock).toHaveBeenCalled();
   });
 
   it("maps Nominatim JSON into a GeocodeResult", async () => {
@@ -102,6 +189,44 @@ describe("NominatimAreaResolver", () => {
     const result = await resolver.resolveAdmin({ city: "Seattle" });
     expect(result?.osmType).toBe("relation");
     expect(result?.osmId).toBe(2);
+  });
+
+  it("returns null when JSON is not an array", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        json: async () => ({ error: "boom" }),
+        ok: true,
+      })),
+    );
+    const resolver = new NominatimAreaResolver(TEST_CONTACT, TEST_ENDPOINT);
+    await expect(
+      resolver.resolveAdmin({ city: "Seattle" }),
+    ).resolves.toBeNull();
+  });
+
+  it("skips invalid rows and returns null when none remain", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        json: async () => [
+          nominatimRow({ lat: "NaN", lon: "NaN" }),
+          nominatimRow({
+            boundingbox: ["x", "y", "z", "w"] as unknown as [
+              string,
+              string,
+              string,
+              string,
+            ],
+          }),
+        ],
+        ok: true,
+      })),
+    );
+    const resolver = new NominatimAreaResolver(TEST_CONTACT, TEST_ENDPOINT);
+    await expect(
+      resolver.resolveAdmin({ city: "Seattle" }),
+    ).resolves.toBeNull();
   });
 
   it("throws on non-OK HTTP responses", async () => {

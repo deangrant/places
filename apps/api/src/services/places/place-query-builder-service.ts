@@ -93,6 +93,9 @@ export class PlaceQueryBuilder implements IPlaceQueryBuilder {
     if (typeof scope.areaId !== "number") {
       return "";
     }
+    if (!Number.isFinite(scope.areaId)) {
+      throw new Error("Spatial scope requires an area or bounding box.");
+    }
     // Nominatim OSM ids become Overpass area ids with the standard offset.
     return `area(${scope.areaId})->.searchArea;`;
   }
@@ -103,10 +106,23 @@ export class PlaceQueryBuilder implements IPlaceQueryBuilder {
    */
   private formatSpatialFilter(scope: SpatialScope): string {
     if (typeof scope.areaId === "number") {
+      if (!Number.isFinite(scope.areaId)) {
+        throw new Error("Spatial scope requires an area or bounding box.");
+      }
       return "(area.searchArea)";
     }
     if (scope.bbox) {
       const { south, west, north, east } = scope.bbox;
+      if (
+        !(
+          Number.isFinite(south) &&
+          Number.isFinite(west) &&
+          Number.isFinite(north) &&
+          Number.isFinite(east)
+        )
+      ) {
+        throw new Error("Spatial scope requires an area or bounding box.");
+      }
       return `(${south},${west},${north},${east})`;
     }
     throw new Error("Spatial scope requires an area or bounding box.");

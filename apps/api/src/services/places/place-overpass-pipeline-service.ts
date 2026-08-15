@@ -5,7 +5,10 @@ import type {
   SpatialScope,
 } from "places-core";
 import { isAllowedOsmTagKey } from "places-core";
-import type { IAreaResolver } from "../geocoding/nominatim-area-resolver-service.js";
+import {
+  type IAreaResolver,
+  isFiniteBBox,
+} from "../geocoding/nominatim-area-resolver-service.js";
 import type {
   IOverpassClient,
   OverpassAttemptListener,
@@ -101,11 +104,27 @@ export class PlaceOverpassPipeline {
     }
     try {
       const areaId = toOverpassAreaId(admin.osmType, admin.osmId);
+      if (!Number.isFinite(areaId)) {
+        throw new Error(
+          "Could not resolve that location. Try a different city, region, or country.",
+        );
+      }
       return {
         areaId,
       };
-    } catch {
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.startsWith("Could not resolve")
+      ) {
+        throw error;
+      }
       // Fall back to the Nominatim bounding box when area conversion fails.
+      if (!isFiniteBBox(admin.boundingBox)) {
+        throw new Error(
+          "Could not resolve that location. Try a different city, region, or country.",
+        );
+      }
       return {
         bbox: admin.boundingBox,
       };
