@@ -64,7 +64,7 @@ export class PlaceSearchService implements IPlaceSearchService {
     return {
       places,
       scope,
-      truncated: places.length >= RESULT_LIMIT,
+      truncated: elements.length >= RESULT_LIMIT,
     };
   }
 }

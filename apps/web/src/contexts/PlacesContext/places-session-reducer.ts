@@ -14,7 +14,7 @@ export interface PlacesSessionState {
   places: Place[];
   /** Selected place id, or null when none. */
   selectedPlaceId: string | null;
-  /** True when the Overpass response hit the configured result limit. */
+  /** True when Overpass returned a full page at the configured result limit. */
   truncated: boolean;
 }
 

@@ -52,7 +52,7 @@ export interface PlacesContextValue {
   ) => void;
   /** Updates the map camera from MapView interactions. */
   setMapView: (view: MapViewState) => void;
-  /** True when the Overpass response hit the configured result limit. */
+  /** True when Overpass returned a full page at the configured result limit. */
   truncated: boolean;
 }
 

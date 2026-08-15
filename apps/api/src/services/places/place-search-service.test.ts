@@ -129,7 +129,7 @@ describe("PlaceSearchService.search", () => {
     await expect(service.search(baseCriteria)).rejects.toThrow(TIMEOUT_REMARK);
   });
 
-  it("marks truncated when normalized places reach RESULT_LIMIT", async () => {
+  it("marks truncated when Overpass elements reach RESULT_LIMIT", async () => {
     const elements = Array.from({ length: RESULT_LIMIT }, (_, id) => ({
       id,
       type: "node" as const,
@@ -148,7 +148,7 @@ describe("PlaceSearchService.search", () => {
     expect(result.truncated).toBe(true);
   });
 
-  it("does not mark truncated when raw elements hit the limit but places drop", async () => {
+  it("marks truncated when Overpass page is full even if places drop", async () => {
     const elements = Array.from({ length: RESULT_LIMIT }, (_, id) => ({
       id,
       type: "node" as const,
@@ -165,10 +165,10 @@ describe("PlaceSearchService.search", () => {
     });
     const result = await service.search(baseCriteria);
     expect(result.places).toHaveLength(RESULT_LIMIT - 1);
-    expect(result.truncated).toBe(false);
+    expect(result.truncated).toBe(true);
   });
 
-  it("does not mark truncated below RESULT_LIMIT places", async () => {
+  it("does not mark truncated below RESULT_LIMIT Overpass elements", async () => {
     const places = [makePlace({ geometryType: "POINT", id: "node/1" })];
     const { service } = createService({
       normalizer: {

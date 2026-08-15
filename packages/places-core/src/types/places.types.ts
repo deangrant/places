@@ -221,7 +221,7 @@ export interface PlaceSearchResult {
   places: Place[];
   /** Scope used for the query. */
   scope: SpatialScope;
-  /** True when the result count hit the configured Overpass limit. */
+  /** True when Overpass returned a full page (`elements.length >= RESULT_LIMIT`). */
   truncated: boolean;
 }
 
