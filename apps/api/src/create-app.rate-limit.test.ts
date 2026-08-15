@@ -183,6 +183,24 @@ describe("createRequestListener rate limits", () => {
     });
   });
 
+  it("returns an explicit limited ops signal on ready without probing upstream", async () => {
+    const config = testConfig();
+    const services = mockServices();
+    const limiter = new PlacesRateLimiter(config.rateLimit);
+
+    await withServer(config, services, limiter, async (baseUrl) => {
+      const ready = await fetch(`${baseUrl}/health/ready`);
+      expect(ready.status).toBe(200);
+      await expect(ready.json()).resolves.toEqual({
+        checks: {
+          process: "ok",
+          upstream: "not_probed",
+        },
+        status: "ready",
+      });
+    });
+  });
+
   it("tracks separate quotas per remote address via limiter keys", () => {
     const limiter = new PlacesRateLimiter({
       burst: 1,

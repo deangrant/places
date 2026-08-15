@@ -83,7 +83,13 @@ async function handleRequest(
     }
 
     if (req.method === "GET" && path === "/health/ready") {
-      sendJson(res, 200, { status: "ready" });
+      sendJson(res, 200, {
+        checks: {
+          process: "ok",
+          upstream: "not_probed",
+        },
+        status: "ready",
+      });
       return;
     }
 

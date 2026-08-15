@@ -37,8 +37,9 @@ Example validation body:
 | Outcome | Status |
 | --- | --- |
 | Search/export OK | 200 |
-| Live/ready OK | 200 |
-| Ready cannot take traffic | 503 |
+| Live OK (`{ "status": "ok" }`) | 200 |
+| Ready OK (process can take traffic; upstream not probed) | 200 |
+| Ready cannot take traffic (boot failure only; not OSM blips) | 503 |
 | Malformed | 400 |
 | Too large | 413 |
 | Validation | 422 |
@@ -83,8 +84,8 @@ Web:
 
 | Method | Path | Body / notes |
 | --- | --- | --- |
-| `GET` | `/health/live` | No body; not rate-limited |
-| `GET` | `/health/ready` | No body; not rate-limited |
+| `GET` | `/health/live` | `{ "status": "ok" }`; not rate-limited |
+| `GET` | `/health/ready` | `{ "status": "ready", "checks": { "process": "ok", "upstream": "not_probed" } }`; does not probe OSM; not rate-limited |
 | `POST` | `/places/search` | `PlaceSearchCriteria` → `PlaceSearchResult`; rate-limited |
 | `POST` | `/places/export` | Criteria + geometry mode → places for CSV; rate-limited |
 

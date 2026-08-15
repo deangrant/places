@@ -180,10 +180,13 @@ Do not add new test/build frameworks for the split.
 ## 11. Health probes
 
 - `GET /health/live` **must** mean process up (no dependency checks that cause
-  restart storms).
-- `GET /health/ready` **must** mean the process can take traffic. Public Overpass
-  blips **should not** flip ready to 503 in a way that causes orchestrator
-  thrash; treat upstream OSM as degraded carefully.
+  restart storms). Response body is `{ "status": "ok" }`.
+- `GET /health/ready` **must** mean the Node process can accept traffic after
+  boot. It **must not** probe public Nominatim/Overpass. Public Overpass blips
+  **must not** flip ready to 503 (orchestrator thrash). Ready returns HTTP 200
+  with a limited ops signal, e.g.
+  `{ "status": "ready", "checks": { "process": "ok", "upstream": "not_probed" } }`.
+  Do **not** treat ready as an Overpass/Nominatim SLA signal.
 - Probes **must** be unauthenticated and cheap.
 
 ---
