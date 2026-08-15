@@ -6,8 +6,8 @@ import styles from "./index.module.css";
 import type { ResultRowProps, ResultsListProps } from "./index.types";
 import { useFixedVirtualList } from "./use-fixed-virtual-list";
 
-/** Fixed row height for virtualization (matches `.row` min-height). */
-const RESULT_ROW_HEIGHT_PX = 72;
+/** Fixed row height for virtualization (fits name, meta, location + padding). */
+const RESULT_ROW_HEIGHT_PX = 84;
 
 /** Compact Places results list with row selection and results filter. */
 export function ResultsList({
