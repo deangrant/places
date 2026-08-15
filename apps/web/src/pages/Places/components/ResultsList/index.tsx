@@ -9,7 +9,7 @@ import { useFixedVirtualList } from "./use-fixed-virtual-list";
 /** Fixed row height for virtualization (matches `.row` min-height). */
 const RESULT_ROW_HEIGHT_PX = 72;
 
-/** Compact Places results list with row selection and address filter. */
+/** Compact Places results list with row selection and results filter. */
 export function ResultsList({
   places,
   totalCount,
@@ -44,10 +44,10 @@ export function ResultsList({
         ) : null}
         <div className={styles.filterRow}>
           <Input
-            aria-label="Filter results by address"
+            aria-label="Filter results"
             id="results-address-filter"
             onChange={onQueryChange}
-            placeholder="Filter by address…"
+            placeholder="Filter results…"
             type="search"
             value={query}
           />
@@ -55,7 +55,7 @@ export function ResultsList({
             <Button
               className={styles.clear}
               onClick={handleClear}
-              title="Clear address filter"
+              title="Clear results filter"
               type="button"
               variant="ghost"
             >
@@ -68,7 +68,7 @@ export function ResultsList({
       {places.length === 0 ? (
         <div className={styles.empty}>
           {isFiltering
-            ? "No places match this address"
+            ? "No places match this filter"
             : "No places yet. Choose filters and run a search."}
         </div>
       ) : (

@@ -48,6 +48,7 @@ describe("filterPlacesByAddress", () => {
       streetAddress: "9 Broadway",
     }),
     place({
+      brands: ["Starbucks"],
       city: "London",
       id: "c",
       isoCountryCode: "GB",
@@ -65,6 +66,7 @@ describe("filterPlacesByAddress", () => {
   it("matches street, city, region, postal code, and country case-insensitively", () => {
     expect(filterPlacesByAddress(places, "market").map((p) => p.id)).toEqual([
       "a",
+      "b",
     ]);
     expect(filterPlacesByAddress(places, "oakland").map((p) => p.id)).toEqual([
       "b",
@@ -78,8 +80,18 @@ describe("filterPlacesByAddress", () => {
     expect(filterPlacesByAddress(places, "gb").map((p) => p.id)).toEqual(["c"]);
   });
 
-  it("does not match locationName", () => {
-    expect(filterPlacesByAddress(places, "Hidden Cafe")).toEqual([]);
-    expect(filterPlacesByAddress(places, "Market Kitchen")).toEqual([]);
+  it("matches locationName case-insensitively", () => {
+    expect(
+      filterPlacesByAddress(places, "Hidden Cafe").map((p) => p.id),
+    ).toEqual(["a"]);
+    expect(
+      filterPlacesByAddress(places, "Market Kitchen").map((p) => p.id),
+    ).toEqual(["b"]);
+  });
+
+  it("matches brand names case-insensitively", () => {
+    expect(filterPlacesByAddress(places, "starbucks").map((p) => p.id)).toEqual(
+      ["c"],
+    );
   });
 });
