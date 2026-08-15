@@ -4,6 +4,7 @@ import {
   OVERPASS_TIMEOUT_SECONDS,
 } from "@/constants/api.constants";
 import {
+  describeOverpassRemark,
   hostnameFromEndpoint,
   isRetryableOverpassFailure,
   type OverpassAttemptEvent,
@@ -278,6 +279,31 @@ describe("overpass helpers", () => {
     expect(overpassTimeoutMessage()).not.toContain(
       String(OVERPASS_TIMEOUT_SECONDS),
     );
+  });
+
+  it("maps Overpass remarks to user-safe messages", () => {
+    expect(describeOverpassRemark()).toBeUndefined();
+    expect(describeOverpassRemark("")).toBeUndefined();
+    expect(describeOverpassRemark("runtime error: Query timed out")).toBe(
+      `Query timed out after about ${OVERPASS_TIMEOUT_SECONDS}s. Narrow the area or filters.`,
+    );
+    expect(describeOverpassRemark("runtime error: Query timeout")).toBe(
+      `Query timed out after about ${OVERPASS_TIMEOUT_SECONDS}s. Narrow the area or filters.`,
+    );
+    expect(
+      describeOverpassRemark(
+        'runtime error: Query run out of memory in "recurse" at line 1',
+      ),
+    ).toBe(
+      "Query ran out of memory on the Overpass server. Narrow the area or filters.",
+    );
+    const generic = describeOverpassRemark(
+      "runtime error: open64: 0 Success - reconstruct_items::1",
+    );
+    expect(generic).toBe(
+      "Overpass could not complete this query. Narrow the area or filters and try again.",
+    );
+    expect(generic).not.toContain("open64");
   });
 
   it("extracts hostnames from interpreter URLs", () => {

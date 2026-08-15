@@ -377,17 +377,22 @@ function overpassStatusMessage(status: number): string {
 }
 
 /**
- * Builds a friendly message for Overpass timeout remarks.
+ * Maps Overpass JSON remarks to stable user-facing error copy.
+ * Never returns raw interpreter text.
  * @param remark Optional remark from the Overpass JSON payload.
  */
 export function describeOverpassRemark(remark?: string): string | undefined {
   if (!remark) {
     return;
   }
-  if (remark.toLowerCase().includes("timeout")) {
+  const normalized = remark.toLowerCase();
+  if (normalized.includes("timeout") || normalized.includes("timed out")) {
     return `Query timed out after about ${OVERPASS_TIMEOUT_SECONDS}s. Narrow the area or filters.`;
   }
-  return remark;
+  if (normalized.includes("memory")) {
+    return "Query ran out of memory on the Overpass server. Narrow the area or filters.";
+  }
+  return "Overpass could not complete this query. Narrow the area or filters and try again.";
 }
 
 /**
