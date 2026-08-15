@@ -115,7 +115,7 @@ export class PlaceSearchService
     return {
       places,
       scope,
-      truncated: response.elements.length >= RESULT_LIMIT,
+      truncated: places.length >= RESULT_LIMIT,
     };
   }
 

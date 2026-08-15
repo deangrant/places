@@ -132,16 +132,60 @@ describe("PlaceSearchService.search", () => {
     await expect(service.search(baseCriteria)).rejects.toThrow(TIMEOUT_REMARK);
   });
 
-  it("marks truncated at RESULT_LIMIT", async () => {
+  it("marks truncated when normalized places reach RESULT_LIMIT", async () => {
     const elements = Array.from({ length: RESULT_LIMIT }, (_, id) => ({
       id,
       type: "node" as const,
     }));
+    const places = Array.from({ length: RESULT_LIMIT }, (_, id) =>
+      makePlace({ geometryType: "POINT", id: `node/${id}` }),
+    );
     const { service } = createService({
+      normalizer: {
+        normalize: vi.fn(() => places),
+        normalizeWithGeometry: vi.fn(() => []),
+      },
       overpass: { query: vi.fn(async () => ({ elements })) },
     });
     const result = await service.search(baseCriteria);
     expect(result.truncated).toBe(true);
+  });
+
+  it("does not mark truncated when raw elements hit the limit but places drop", async () => {
+    const elements = Array.from({ length: RESULT_LIMIT }, (_, id) => ({
+      id,
+      type: "node" as const,
+    }));
+    const places = Array.from({ length: RESULT_LIMIT - 1 }, (_, id) =>
+      makePlace({ geometryType: "POINT", id: `node/${id}` }),
+    );
+    const { service } = createService({
+      normalizer: {
+        normalize: vi.fn(() => places),
+        normalizeWithGeometry: vi.fn(() => []),
+      },
+      overpass: { query: vi.fn(async () => ({ elements })) },
+    });
+    const result = await service.search(baseCriteria);
+    expect(result.places).toHaveLength(RESULT_LIMIT - 1);
+    expect(result.truncated).toBe(false);
+  });
+
+  it("does not mark truncated below RESULT_LIMIT places", async () => {
+    const places = [makePlace({ geometryType: "POINT", id: "node/1" })];
+    const { service } = createService({
+      normalizer: {
+        normalize: vi.fn(() => places),
+        normalizeWithGeometry: vi.fn(() => []),
+      },
+      overpass: {
+        query: vi.fn(async () => ({
+          elements: [{ id: 1, type: "node" as const }],
+        })),
+      },
+    });
+    const result = await service.search(baseCriteria);
+    expect(result.truncated).toBe(false);
   });
 
   it("falls back to bbox when area id conversion fails", async () => {
