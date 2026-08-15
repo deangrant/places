@@ -15,8 +15,18 @@ export const RESULT_LIMIT = 2500;
 /** Overpass server-side timeout in seconds (QL `[timeout:…]`). */
 export const OVERPASS_TIMEOUT_SECONDS = 300;
 
-/** Per-attempt client abort and UI countdown budget in seconds. */
+/**
+ * Overall Places client / route AbortSignal and UI countdown budget in seconds.
+ * Must remain larger than attempt timeout × max attempts so soft-timeout
+ * failover can run within the shared caller signal.
+ */
 export const OVERPASS_CLIENT_TIMEOUT_SECONDS = 180;
+
+/**
+ * Soft abort budget per Overpass interpreter attempt in seconds.
+ * Shorter than the overall client budget so hanging endpoints can fail over.
+ */
+export const OVERPASS_ATTEMPT_TIMEOUT_SECONDS = 50;
 
 /** Max interpreters tried per query after shuffle. */
 export const OVERPASS_MAX_ENDPOINT_ATTEMPTS = 3;

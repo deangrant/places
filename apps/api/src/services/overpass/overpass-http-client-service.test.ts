@@ -1,4 +1,5 @@
 import {
+  OVERPASS_ATTEMPT_TIMEOUT_SECONDS,
   OVERPASS_CLIENT_TIMEOUT_SECONDS,
   OVERPASS_TIMEOUT_SECONDS,
 } from "places-core";
@@ -53,7 +54,7 @@ describe("OverpassHttpClient default fetchImpl", () => {
 
     const client = new OverpassHttpClient(
       ["https://example.test/interpreter"],
-      OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
+      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
       identityOrder,
     );
     const response = await client.query("[out:json];out;");
@@ -77,7 +78,7 @@ describe("OverpassHttpClient default fetchImpl", () => {
 
     const client = new OverpassHttpClient(
       ["https://example.test/interpreter"],
-      OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
+      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
       identityOrder,
       undefined,
       "PlacesExplorer/1.0 (test@example.org)",
@@ -119,7 +120,7 @@ describe("OverpassHttpClient query timeout", () => {
     const controller = new AbortController();
     const client = new OverpassHttpClient(
       ["https://example.test/interpreter"],
-      OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
+      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
       identityOrder,
     );
     const pending = client.query("[out:json];out;", controller.signal);
@@ -146,7 +147,7 @@ describe("OverpassHttpClient failover", () => {
         "https://first.example/api/interpreter",
         "https://second.example/api/interpreter",
       ],
-      OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
+      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
       identityOrder,
     );
 
@@ -183,7 +184,7 @@ describe("OverpassHttpClient failover", () => {
         "https://first.example/api/interpreter",
         "https://second.example/api/interpreter",
       ],
-      OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
+      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
       (endpoints) => [...endpoints].reverse(),
     );
 
@@ -205,7 +206,7 @@ describe("OverpassHttpClient failover", () => {
         "https://first.example/api/interpreter",
         "https://second.example/api/interpreter",
       ],
-      OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
+      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
       identityOrder,
     );
 
@@ -228,7 +229,7 @@ describe("OverpassHttpClient failover", () => {
         "https://first.example/api/interpreter",
         "https://second.example/api/interpreter",
       ],
-      OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
+      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
       identityOrder,
     );
 
@@ -272,6 +273,63 @@ describe("OverpassHttpClient failover", () => {
     ]);
   });
 
+  it("soft-timeout failovers when the caller budget outlives the attempt timeout", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(hangingFetch)
+      .mockResolvedValueOnce(jsonResponse({ elements: [{ id: 42 }] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const attempts: OverpassAttemptEvent[] = [];
+    const client = new OverpassHttpClient(
+      [
+        "https://first.example/api/interpreter",
+        "https://second.example/api/interpreter",
+      ],
+      25,
+      identityOrder,
+    );
+    // Shared route-style signal: large enough for two short attempts.
+    const caller = AbortSignal.timeout(200);
+
+    const result = await client.query("[out:json];out;", caller, (event) => {
+      attempts.push(event);
+    });
+
+    expect(result.elements).toEqual([{ id: 42 }]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(attempts.map((entry) => entry.status)).toEqual([
+      "started",
+      "timed_out",
+      "started",
+      "succeeded",
+    ]);
+  });
+
+  it("does not return a later endpoint when the caller budget matches the attempt timeout", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(hangingFetch)
+      .mockResolvedValueOnce(jsonResponse({ elements: [{ id: 99 }] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new OverpassHttpClient(
+      [
+        "https://first.example/api/interpreter",
+        "https://second.example/api/interpreter",
+      ],
+      40,
+      identityOrder,
+    );
+    // Same wall-clock as attempt soft timeout: soft-timeout failover is ineffective.
+    const caller = AbortSignal.timeout(40);
+
+    await expect(client.query("[out:json];out;", caller)).rejects.toBeTruthy();
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "https://first.example/api/interpreter",
+    );
+  });
+
   it("stops after three endpoint attempts when four are available", async () => {
     const fetchMock = vi.fn((_input: string | URL, _init?: RequestInit) =>
       Promise.reject(new TypeError("Failed to fetch")),
@@ -285,7 +343,7 @@ describe("OverpassHttpClient failover", () => {
         "https://c.example/api/interpreter",
         "https://d.example/api/interpreter",
       ],
-      OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
+      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
       identityOrder,
     );
 
@@ -313,7 +371,7 @@ describe("OverpassHttpClient failover", () => {
         "https://first.example/api/interpreter",
         "https://second.example/api/interpreter",
       ],
-      OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
+      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
       identityOrder,
     );
 
@@ -334,7 +392,7 @@ describe("OverpassHttpClient failover", () => {
         "https://first.example/api/interpreter",
         "https://second.example/api/interpreter",
       ],
-      OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
+      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
       identityOrder,
     );
     const pending = client.query("[out:json];out;", controller.signal);
@@ -349,12 +407,15 @@ describe("OverpassHttpClient failover", () => {
 });
 
 describe("overpass helpers", () => {
-  it("includes the configured client soft timeout seconds", () => {
+  it("includes the overall client budget seconds, not the QL timeout", () => {
     expect(overpassTimeoutMessage()).toContain(
       String(OVERPASS_CLIENT_TIMEOUT_SECONDS),
     );
     expect(overpassTimeoutMessage()).not.toContain(
       String(OVERPASS_TIMEOUT_SECONDS),
+    );
+    expect(OVERPASS_ATTEMPT_TIMEOUT_SECONDS).toBeLessThan(
+      OVERPASS_CLIENT_TIMEOUT_SECONDS,
     );
   });
 

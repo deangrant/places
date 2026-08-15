@@ -1,5 +1,6 @@
 import type { OverpassResponse } from "places-core";
 import {
+  OVERPASS_ATTEMPT_TIMEOUT_SECONDS,
   OVERPASS_CLIENT_TIMEOUT_SECONDS,
   OVERPASS_ENDPOINTS,
   OVERPASS_MAX_ENDPOINT_ATTEMPTS,
@@ -74,14 +75,14 @@ export class OverpassHttpClient implements IOverpassClient {
 
   /**
    * @param endpoints Interpreter URLs (shuffled per query unless overridden).
-   * @param timeoutMs Client-side abort budget in milliseconds per attempt.
+   * @param timeoutMs Soft abort budget in milliseconds per interpreter attempt.
    * @param shuffle Endpoint orderer; defaults to Fisher–Yates shuffle.
    * @param fetchImpl HTTP fetch implementation; defaults to globalThis.fetch.
    * @param userAgent Identifying User-Agent for public Overpass mirrors.
    */
   constructor(
     endpoints: readonly string[] = OVERPASS_ENDPOINTS,
-    timeoutMs: number = OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
+    timeoutMs: number = OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
     shuffle: (endpoints: readonly string[]) => string[] = shuffleEndpoints,
     fetchImpl: OverpassFetch = defaultOverpassFetch,
     userAgent?: string,
@@ -329,7 +330,7 @@ export function shuffleEndpoints(endpoints: readonly string[]): string[] {
 }
 
 /**
- * Returns a user-facing message when an Overpass query hits the client soft timeout.
+ * Returns a user-facing message when the overall Places client budget is exhausted.
  */
 export function overpassTimeoutMessage(): string {
   return `Query timed out after about ${OVERPASS_CLIENT_TIMEOUT_SECONDS}s. Narrow the area or filters.`;

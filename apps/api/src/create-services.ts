@@ -2,7 +2,7 @@ import {
   BrandCatalog,
   CategoryTaxonomy,
   NOMINATIM_ENDPOINT,
-  OVERPASS_CLIENT_TIMEOUT_SECONDS,
+  OVERPASS_ATTEMPT_TIMEOUT_SECONDS,
   OVERPASS_ENDPOINTS,
 } from "places-core";
 import type { ApiConfig } from "./config.js";
@@ -39,7 +39,7 @@ export function createApiServices(config: ApiConfig): ApiServices {
   const brandCatalog = new BrandCatalog();
   const overpass = new OverpassHttpClient(
     config.overpassEndpoints ?? OVERPASS_ENDPOINTS,
-    OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
+    OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
     undefined,
     undefined,
     config.nominatimUserAgent,

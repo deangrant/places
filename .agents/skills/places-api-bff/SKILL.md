@@ -150,6 +150,9 @@ Do not add new test/build frameworks for the split.
   `Accept`) on interpreter requests; public mirrors often return 406 without it.
 - Overpass clients **must** use explicit timeouts and limited failover across
   configured interpreters.
+- Per-interpreter soft timeout (`OVERPASS_ATTEMPT_TIMEOUT_SECONDS`) **must** be
+  shorter than the overall route/UI budget (`OVERPASS_CLIENT_TIMEOUT_SECONDS`)
+  so soft-timeout failover can run before the shared caller signal expires.
 - Retry **only** transient failures (for example 406/408/429/502/503/504,
   network blips). Use exponential backoff with jitter when retrying.
 - **Must not** amplify load with unbounded retries against public OSM endpoints.
@@ -160,7 +163,8 @@ Do not add new test/build frameworks for the split.
 ## 10. Long-running work policy
 
 - This pass **must** use synchronous request/response with documented Overpass
-  and client timeouts (today on the order of ~180s client / ~300s QL).
+  and client timeouts (today ~180s overall client / ~50s per-attempt soft abort /
+  ~300s QL server hint).
 - Graduate to **202** + job resources only when hosting cannot hold the
   connection (for example Workers wall-clock) or public SLAs require it.
 - Do **not** half-implement webhooks or job polling in this pass.
