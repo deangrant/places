@@ -61,6 +61,11 @@ Conflict rule: HTTP/BFF contract rules come from this skill; TypeScript module d
 | Validation | Type guards / allowlists — **must not** add zod/valibot/yup |
 | Rate limiting | In-process token bucket with Node builtins only (see §13) |
 
+The web client **may** cast success JSON to `places-core` DTOs under the
+monorepo co-versioning contract (optional light shape checks only). Full
+response schemas **should** wait until a public multi-client versioned surface
+exists; deploy web and API together.
+
 **Absolutely necessary bar:** add a third-party package only if a builtin cannot
 meet a hard requirement (for example platform crypto) and document why in the
 PR. Convenience, “everyone uses X”, or Cloudflare adapters do **not** meet the

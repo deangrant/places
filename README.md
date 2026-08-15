@@ -84,6 +84,7 @@ Place data © OpenStreetMap contributors (ODbL). Map display © Mapbox / OpenStr
 - **Brand search is exact.** Autocomplete suggests substring matches from a popular-chains list, but search requires a case-insensitive exact match on the OSM `brand` tag (unlike place name, which is a substring filter). Type or pick the full brand as tagged in OSM.
 - **Category labels use first-match order.** When an OSM element matches more than one curated industry, the app assigns the first matching category in the bundled taxonomy list—not a scored “best” industry.
 - **Country filter is a curated allowlist.** The country dropdown offers a short set of ISO codes, not every country. The API still accepts any 2-letter ISO code.
+- **Web trusts co-versioned API DTOs.** The SPA casts Places API success JSON to shared `places-core` types with only a light `places` array shape check. Deploy `apps/web` and `apps/api` from the same revision; full response schemas wait until a multi-client versioned API exists.
 
 ## License
 

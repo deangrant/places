@@ -58,11 +58,12 @@ export class HttpPlacesApiClient
   /**
    * Runs a Places search for the given criteria.
    */
-  search(
+  async search(
     criteria: PlaceSearchCriteria,
     signal?: AbortSignal,
   ): Promise<PlaceSearchResult> {
-    return this.postJson<PlaceSearchResult>("/places/search", criteria, signal);
+    const body = await this.postJson("/places/search", criteria, signal);
+    return parsePlaceSearchResult(body);
   }
 
   /**
@@ -73,25 +74,26 @@ export class HttpPlacesApiClient
     geometryType: PlaceGeometryType,
     signal?: AbortSignal,
   ): Promise<Place[]> {
-    const body = await this.postJson<{ places: Place[] }>(
+    const body = await this.postJson(
       "/places/export",
       { criteria, geometryType },
       signal,
     );
-    return body.places;
+    return parseExportPlaces(body);
   }
 
   /**
    * POSTs JSON to the API and maps problem+json failures to Error.
+   * Success bodies are cast under the monorepo DTO contract after a light shape check.
    * @param path API path.
    * @param body Request JSON body.
    * @param signal Optional abort signal.
    */
-  private async postJson<T>(
+  private async postJson(
     path: string,
     body: unknown,
     signal?: AbortSignal,
-  ): Promise<T> {
+  ): Promise<unknown> {
     const timeout = AbortSignal.timeout(OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000);
     const combined = combineAbortSignals(signal, timeout);
 
@@ -126,8 +128,37 @@ export class HttpPlacesApiClient
       throw new Error(await readApiErrorMessage(response));
     }
 
-    return (await response.json()) as T;
+    return response.json();
   }
+}
+
+const UNEXPECTED_API_RESPONSE =
+  "Places API returned an unexpected response. Deploy the web app and API from the same revision.";
+
+/**
+ * Minimal search success shape check (not a full Place schema).
+ * @param value Parsed JSON body.
+ */
+function parsePlaceSearchResult(value: unknown): PlaceSearchResult {
+  if (!(isPlainObject(value) && Array.isArray(value.places))) {
+    throw new Error(UNEXPECTED_API_RESPONSE);
+  }
+  return value as PlaceSearchResult;
+}
+
+/**
+ * Minimal export success shape check (not a full Place schema).
+ * @param value Parsed JSON body.
+ */
+function parseExportPlaces(value: unknown): Place[] {
+  if (!(isPlainObject(value) && Array.isArray(value.places))) {
+    throw new Error(UNEXPECTED_API_RESPONSE);
+  }
+  return value.places as Place[];
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**

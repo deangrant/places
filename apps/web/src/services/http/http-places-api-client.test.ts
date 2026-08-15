@@ -79,3 +79,42 @@ describe("HttpPlacesApiClient abort fallback", () => {
     expect(init?.signal).toBeInstanceOf(AbortSignal);
   });
 });
+
+describe("HttpPlacesApiClient response shape", () => {
+  it("accepts a search body with a places array", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({ places: [], scope: {}, truncated: false }),
+      ),
+    );
+    const client = new HttpPlacesApiClient("http://api.test");
+    await expect(client.search(criteria)).resolves.toEqual({
+      places: [],
+      scope: {},
+      truncated: false,
+    });
+  });
+
+  it("rejects a search body without a places array", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ truncated: false })),
+    );
+    const client = new HttpPlacesApiClient("http://api.test");
+    await expect(client.search(criteria)).rejects.toThrow(
+      /Deploy the web app and API from the same revision/,
+    );
+  });
+
+  it("rejects an export body without a places array", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({})),
+    );
+    const client = new HttpPlacesApiClient("http://api.test");
+    await expect(client.exportByGeometry(criteria, "POINT")).rejects.toThrow(
+      /Deploy the web app and API from the same revision/,
+    );
+  });
+});
