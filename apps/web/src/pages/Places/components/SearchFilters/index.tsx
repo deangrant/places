@@ -1,6 +1,6 @@
 import { COUNTRY_OPTIONS, OSM_TAG_KEY_ALLOWLIST } from "places-core";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
 import { Button } from "@/components/core/Button";
 import { Input } from "@/components/core/Input";
 import { Select } from "@/components/core/Select";
@@ -10,12 +10,20 @@ import { usePlacesSearch } from "@/contexts/PlacesContext";
 import { useServices } from "@/contexts/ServicesContext";
 import styles from "./index.module.css";
 
-/** Filter chrome for category, brand, geography, and search actions. */
+type AdvancedChip = {
+  id: string;
+  label: string;
+  onClear: () => void;
+};
+
+/** Filter chrome for brand, geography, and advanced search actions. */
 export function SearchFilters() {
   const { criteria, setCriteria, loading, runSearch, error } =
     usePlacesSearch();
   const { brandCatalog, taxonomy } = useServices();
   const [selectedTop, setSelectedTop] = useState("");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const advancedPanelId = useId();
 
   const leafCategory = useMemo(
     () =>
@@ -71,6 +79,41 @@ export function SearchFilters() {
     () => brandCatalog.search(criteria.brand ?? ""),
     [brandCatalog, criteria.brand],
   );
+
+  const advancedChips = useMemo((): AdvancedChip[] => {
+    const chips: AdvancedChip[] = [];
+    if (leafCategory) {
+      chips.push({
+        id: "category",
+        label: `${leafCategory.topCategory}: ${leafCategory.subCategory}`,
+        onClear: () => {
+          setSelectedTop("");
+          setCriteria({ categoryId: undefined });
+        },
+      });
+    } else if (selectedTop) {
+      chips.push({
+        id: "category",
+        label: `Category: ${selectedTop}`,
+        onClear: () => {
+          setSelectedTop("");
+          setCriteria({ categoryId: undefined });
+        },
+      });
+    }
+    const osmKey = criteria.osmTagKey?.trim();
+    const osmValue = criteria.osmTagValue?.trim();
+    if (osmKey || osmValue) {
+      chips.push({
+        id: "osmTag",
+        label: osmValue ? `${osmKey ?? "tag"}=${osmValue}` : `OSM: ${osmKey}`,
+        onClear: () => setCriteria({ osmTagKey: undefined, osmTagValue: "" }),
+      });
+    }
+    return chips;
+  }, [criteria, leafCategory, selectedTop, setCriteria]);
+
+  const advancedActiveCount = advancedChips.length;
 
   const handleBrandChange = useCallback(
     (value: string) => {
@@ -131,7 +174,10 @@ export function SearchFilters() {
 
   const handleOsmTagKeyChange = useCallback(
     (value: string) => {
-      setCriteria({ osmTagKey: value || undefined });
+      setCriteria({
+        osmTagKey: value || undefined,
+        ...(value ? {} : { osmTagValue: "" }),
+      });
     },
     [setCriteria],
   );
@@ -156,45 +202,24 @@ export function SearchFilters() {
     runSearch().catch(() => undefined);
   }, [runSearch]);
 
+  const handleToggleAdvanced = useCallback(() => {
+    setAdvancedOpen((open) => !open);
+  }, []);
+
   return (
     <section aria-label="Place filters" className={styles.root}>
-      <div className={styles.grid}>
-        <FormField
-          hint="Exact OSM brand match (suggestions are helpers only)."
-          htmlFor="brand"
-          label="Brand"
-        >
-          <Autocomplete
-            id="brand"
-            onChange={handleBrandChange}
-            onSelect={handleBrandSelect}
-            placeholder="e.g. Starbucks"
-            suggestions={brandSuggestions}
-            value={criteria.brand ?? ""}
-          />
-        </FormField>
-
-        <FormField htmlFor="category" label="Category">
-          <Select
-            id="category"
-            onChange={handleTopCategoryChange}
-            options={topCategoryOptions}
-            placeholder="Any category"
-            value={categoryValue}
-          />
-        </FormField>
-
-        <FormField htmlFor="subcategory" label="Subcategory">
-          <Select
-            disabled={!categoryValue}
-            id="subcategory"
-            onChange={handleSubcategoryChange}
-            options={subcategoryOptions}
-            placeholder={
-              categoryValue ? "Any subcategory" : "Select a category first"
-            }
-            value={subcategoryValue}
-          />
+      <div className={styles.primaryRow}>
+        <FormField htmlFor="brand" label="Brand">
+          <div title="Exact OSM brand match (suggestions are helpers only).">
+            <Autocomplete
+              id="brand"
+              onChange={handleBrandChange}
+              onSelect={handleBrandSelect}
+              placeholder="e.g. Starbucks"
+              suggestions={brandSuggestions}
+              value={criteria.brand ?? ""}
+            />
+          </div>
         </FormField>
 
         <FormField htmlFor="name" label="Place name">
@@ -207,18 +232,16 @@ export function SearchFilters() {
           />
         </FormField>
 
-        <FormField
-          hint="Curated country list — not every ISO code."
-          htmlFor="country"
-          label="Country"
-        >
-          <Select
-            id="country"
-            onChange={handleCountryChange}
-            options={countryOptions}
-            placeholder="Any country"
-            value={criteria.countryCode ?? ""}
-          />
+        <FormField htmlFor="country" label="Country">
+          <div title="Curated country list — not every ISO code.">
+            <Select
+              id="country"
+              onChange={handleCountryChange}
+              options={countryOptions}
+              placeholder="Any country"
+              value={criteria.countryCode ?? ""}
+            />
+          </div>
         </FormField>
 
         <FormField htmlFor="region" label="State / region">
@@ -241,27 +264,20 @@ export function SearchFilters() {
           />
         </FormField>
 
-        <FormField htmlFor="osm-tag-key" label="OSM tag key">
-          <Select
-            id="osm-tag-key"
-            onChange={handleOsmTagKeyChange}
-            options={osmTagKeyOptions}
-            placeholder="Any key"
-            value={criteria.osmTagKey ?? ""}
-          />
-        </FormField>
-
-        <FormField htmlFor="osm-tag-value" label="OSM tag value">
-          <Input
-            id="osm-tag-value"
-            onChange={handleOsmTagValueChange}
-            onKeyDown={handleSearchKeyDown}
-            placeholder="e.g. cafe"
-            value={criteria.osmTagValue ?? ""}
-          />
-        </FormField>
-
         <div className={styles.actions}>
+          <Button
+            aria-controls={advancedPanelId}
+            aria-expanded={advancedOpen}
+            className={styles.advancedToggle}
+            onClick={handleToggleAdvanced}
+            title="Category and OSM tag filters"
+            variant="ghost"
+          >
+            Advanced
+            {advancedActiveCount > 0 ? (
+              <span className={styles.badge}>{advancedActiveCount}</span>
+            ) : null}
+          </Button>
           <Button
             className={styles.search}
             disabled={loading}
@@ -271,6 +287,76 @@ export function SearchFilters() {
           </Button>
         </div>
       </div>
+
+      {!advancedOpen && advancedChips.length > 0 ? (
+        <ul aria-label="Active advanced filters" className={styles.chips}>
+          {advancedChips.map((chip) => (
+            <li key={chip.id}>
+              <button
+                aria-label={`Clear ${chip.label}`}
+                className={styles.chip}
+                onClick={chip.onClear}
+                type="button"
+              >
+                <span>{chip.label}</span>
+                <span aria-hidden="true" className={styles.chipClear}>
+                  ×
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {advancedOpen ? (
+        <div className={styles.advancedPanel} id={advancedPanelId}>
+          <div className={styles.advancedGrid}>
+            <FormField htmlFor="category" label="Category">
+              <Select
+                id="category"
+                onChange={handleTopCategoryChange}
+                options={topCategoryOptions}
+                placeholder="Any category"
+                value={categoryValue}
+              />
+            </FormField>
+
+            {categoryValue ? (
+              <FormField htmlFor="subcategory" label="Subcategory">
+                <Select
+                  id="subcategory"
+                  onChange={handleSubcategoryChange}
+                  options={subcategoryOptions}
+                  placeholder="Any subcategory"
+                  value={subcategoryValue}
+                />
+              </FormField>
+            ) : null}
+
+            <FormField htmlFor="osm-tag-key" label="Tag">
+              <Select
+                id="osm-tag-key"
+                onChange={handleOsmTagKeyChange}
+                options={osmTagKeyOptions}
+                placeholder="Any key"
+                value={criteria.osmTagKey ?? ""}
+              />
+            </FormField>
+
+            {criteria.osmTagKey ? (
+              <FormField htmlFor="osm-tag-value" label="Value">
+                <Input
+                  id="osm-tag-value"
+                  onChange={handleOsmTagValueChange}
+                  onKeyDown={handleSearchKeyDown}
+                  placeholder="e.g. cafe"
+                  value={criteria.osmTagValue ?? ""}
+                />
+              </FormField>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {error ? (
         <p className={styles.error} role="alert">
