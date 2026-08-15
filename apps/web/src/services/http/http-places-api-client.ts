@@ -93,10 +93,7 @@ export class HttpPlacesApiClient
     signal?: AbortSignal,
   ): Promise<T> {
     const timeout = AbortSignal.timeout(OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000);
-    const combined =
-      signal && typeof AbortSignal.any === "function"
-        ? AbortSignal.any([signal, timeout])
-        : timeout;
+    const combined = combineAbortSignals(signal, timeout);
 
     let response: Response;
     try {
@@ -131,6 +128,46 @@ export class HttpPlacesApiClient
 
     return (await response.json()) as T;
   }
+}
+
+/**
+ * Combines an optional caller signal with a timeout signal.
+ * @param caller Optional caller abort signal.
+ * @param timeout Timeout abort signal.
+ */
+function combineAbortSignals(
+  caller: AbortSignal | undefined,
+  timeout: AbortSignal,
+): AbortSignal {
+  if (!caller) {
+    return timeout;
+  }
+  if (typeof AbortSignal.any === "function") {
+    return AbortSignal.any([caller, timeout]);
+  }
+  return linkAbortSignals(caller, timeout);
+}
+
+/**
+ * Fallback when `AbortSignal.any` is unavailable: abort when either input aborts.
+ * @param caller Caller abort signal.
+ * @param timeout Timeout abort signal.
+ */
+function linkAbortSignals(
+  caller: AbortSignal,
+  timeout: AbortSignal,
+): AbortSignal {
+  const controller = new AbortController();
+  const forward = () => {
+    controller.abort();
+  };
+  if (caller.aborted || timeout.aborted) {
+    controller.abort();
+    return controller.signal;
+  }
+  caller.addEventListener("abort", forward, { once: true });
+  timeout.addEventListener("abort", forward, { once: true });
+  return controller.signal;
 }
 
 /**
