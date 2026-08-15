@@ -1,4 +1,9 @@
-import type { OverpassResponse } from "places-core";
+import type {
+  OverpassAttemptEvent,
+  OverpassAttemptListener,
+  OverpassAttemptStatus,
+  OverpassResponse,
+} from "places-core";
 import {
   OVERPASS_ATTEMPT_TIMEOUT_SECONDS,
   OVERPASS_CLIENT_TIMEOUT_SECONDS,
@@ -14,29 +19,11 @@ import {
   parseOverpassResponseBody,
 } from "./overpass-response-parser.js";
 
-/** Lifecycle status for one interpreter attempt during a query. */
-export type OverpassAttemptStatus =
-  | "started"
-  | "succeeded"
-  | "failed"
-  | "timed_out";
-
-/**
- * Progress event emitted while trying Overpass interpreters.
- */
-export interface OverpassAttemptEvent {
-  /** Full interpreter URL for this attempt. */
-  endpoint: string;
-  /** Hostname shown in loaders (e.g. overpass.private.coffee). */
-  hostname: string;
-  /** Zero-based index in this query’s shuffled attempt order. */
-  index: number;
-  /** Outcome or start of the attempt. */
-  status: OverpassAttemptStatus;
-}
-
-/** Optional callback for live per-endpoint query status. */
-export type OverpassAttemptListener = (event: OverpassAttemptEvent) => void;
+export type {
+  OverpassAttemptEvent,
+  OverpassAttemptListener,
+  OverpassAttemptStatus,
+};
 
 /**
  * Low-level Overpass interpreter client.

@@ -1,10 +1,10 @@
 import type {
   OsmElement,
+  OverpassAttemptListener,
   Place,
   PlaceGeometryType,
   PlaceSearchCriteria,
 } from "places-core";
-import type { OverpassAttemptListener } from "../overpass/overpass-http-client-service.js";
 import type {
   ICenterPlaceNormalizer,
   IGeometryPlaceNormalizer,

@@ -1,6 +1,9 @@
-import type { PlaceSearchCriteria, PlaceSearchResult } from "places-core";
+import type {
+  OverpassAttemptListener,
+  PlaceSearchCriteria,
+  PlaceSearchResult,
+} from "places-core";
 import { RESULT_LIMIT } from "places-core";
-import type { OverpassAttemptListener } from "../overpass/overpass-http-client-service.js";
 import type { ICenterPlaceNormalizer } from "./osm-place-normalizer-service.js";
 import type { PlaceOverpassPipeline } from "./place-overpass-pipeline-service.js";
 

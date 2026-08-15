@@ -1,39 +1,19 @@
 import { EventEmitter } from "node:events";
-import type { IncomingMessage, ServerResponse } from "node:http";
+import type { ServerResponse } from "node:http";
 import { describe, expect, it } from "vitest";
 import {
-  createDisconnectSignal,
-  createPlacesRequestSignal,
+  createPlacesRouteTimeoutSignal,
+  errorForDomainMapping,
+  isAbortError,
   isResponseClosed,
+  isRouteTimeout,
+  shouldQuietEndOnAbort,
 } from "./request-abort-signal.js";
 
-function mockRequest(
-  partial: { aborted?: boolean; destroyed?: boolean } = {},
-): IncomingMessage {
-  const emitter = new EventEmitter() as IncomingMessage & EventEmitter;
-  Object.defineProperty(emitter, "aborted", {
-    configurable: true,
-    get: () => partial.aborted ?? false,
-  });
-  Object.defineProperty(emitter, "destroyed", {
-    configurable: true,
-    get: () => partial.destroyed ?? false,
-  });
-  return emitter;
-}
-
 function mockResponse(
-  partial: {
-    destroyed?: boolean;
-    writableEnded?: boolean;
-    writableFinished?: boolean;
-  } = {},
+  partial: { destroyed?: boolean; writableEnded?: boolean } = {},
 ): ServerResponse {
   const emitter = new EventEmitter() as ServerResponse & EventEmitter;
-  Object.defineProperty(emitter, "writableFinished", {
-    configurable: true,
-    get: () => partial.writableFinished ?? false,
-  });
   Object.defineProperty(emitter, "writableEnded", {
     configurable: true,
     get: () => partial.writableEnded ?? false,
@@ -45,63 +25,16 @@ function mockResponse(
   return emitter;
 }
 
-describe("createDisconnectSignal", () => {
-  it("aborts when the response closes before it finishes", async () => {
-    const req = mockRequest();
-    const res = mockResponse({ writableFinished: false });
-    const signal = createDisconnectSignal(req, res);
-
-    expect(signal.aborted).toBe(false);
-    res.emit("close");
-    expect(signal.aborted).toBe(true);
-  });
-
-  it("does not abort when the response closes after finishing", () => {
-    const req = mockRequest();
-    const res = mockResponse({ writableFinished: true });
-    const signal = createDisconnectSignal(req, res);
-
-    res.emit("close");
-    expect(signal.aborted).toBe(false);
-  });
-
-  it("aborts when the request emits aborted", () => {
-    const req = mockRequest();
-    const res = mockResponse({ writableFinished: false });
-    const signal = createDisconnectSignal(req, res);
-
-    req.emit("aborted");
-    expect(signal.aborted).toBe(true);
-  });
-
-  it("starts aborted when the request is already destroyed", () => {
-    const req = mockRequest({ destroyed: true });
-    const res = mockResponse();
-    const signal = createDisconnectSignal(req, res);
-    expect(signal.aborted).toBe(true);
-  });
-});
-
-describe("createPlacesRequestSignal", () => {
+describe("createPlacesRouteTimeoutSignal", () => {
   it("aborts when the route timeout elapses", async () => {
-    const req = mockRequest();
-    const res = mockResponse({ writableFinished: false });
-    const signal = createPlacesRequestSignal(req, res, 30);
+    const signal = createPlacesRouteTimeoutSignal(30);
 
     expect(signal.aborted).toBe(false);
     await new Promise((resolve) => {
       signal.addEventListener("abort", resolve, { once: true });
     });
     expect(signal.aborted).toBe(true);
-  });
-
-  it("aborts on disconnect before the timeout", () => {
-    const req = mockRequest();
-    const res = mockResponse({ writableFinished: false });
-    const signal = createPlacesRequestSignal(req, res, 60_000);
-
-    res.emit("close");
-    expect(signal.aborted).toBe(true);
+    expect(signal.reason).toMatchObject({ name: "TimeoutError" });
   });
 });
 
@@ -110,5 +43,65 @@ describe("isResponseClosed", () => {
     expect(isResponseClosed(mockResponse({ writableEnded: true }))).toBe(true);
     expect(isResponseClosed(mockResponse({ destroyed: true }))).toBe(true);
     expect(isResponseClosed(mockResponse())).toBe(false);
+  });
+});
+
+describe("isAbortError", () => {
+  it("recognizes AbortError by name only", () => {
+    expect(
+      isAbortError(
+        new DOMException("The operation was aborted.", "AbortError"),
+      ),
+    ).toBe(true);
+    expect(
+      isAbortError(Object.assign(new Error("aborted"), { name: "AbortError" })),
+    ).toBe(true);
+    expect(isAbortError(new Error("This operation was aborted"))).toBe(false);
+  });
+
+  it("does not treat timeouts or ordinary errors as aborts", () => {
+    expect(
+      isAbortError(
+        new DOMException("The operation timed out.", "TimeoutError"),
+      ),
+    ).toBe(false);
+    expect(isAbortError(new Error("Could not reach the Overpass API."))).toBe(
+      false,
+    );
+  });
+});
+
+describe("route timeout vs cancel", () => {
+  it("detects TimeoutError on the thrown value", () => {
+    const signal = createPlacesRouteTimeoutSignal(60_000);
+    expect(
+      isRouteTimeout(
+        signal,
+        new DOMException("The operation timed out.", "TimeoutError"),
+      ),
+    ).toBe(true);
+  });
+
+  it("detects AbortError after the route signal timed out", async () => {
+    const signal = createPlacesRouteTimeoutSignal(30);
+    await new Promise((resolve) => {
+      signal.addEventListener("abort", resolve, { once: true });
+    });
+    const fetchAbort = new DOMException(
+      "This operation was aborted",
+      "AbortError",
+    );
+    expect(isRouteTimeout(signal, fetchAbort)).toBe(true);
+    expect(shouldQuietEndOnAbort(fetchAbort, signal)).toBe(false);
+    expect(errorForDomainMapping(fetchAbort, signal)).toMatchObject({
+      name: "TimeoutError",
+    });
+  });
+
+  it("quiet-ends true cancel when the route signal is still active", () => {
+    const signal = createPlacesRouteTimeoutSignal(60_000);
+    const cancel = new DOMException("The operation was aborted.", "AbortError");
+    expect(shouldQuietEndOnAbort(cancel, signal)).toBe(true);
+    expect(errorForDomainMapping(cancel, signal)).toBe(cancel);
   });
 });

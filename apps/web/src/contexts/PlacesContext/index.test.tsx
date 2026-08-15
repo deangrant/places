@@ -236,4 +236,25 @@ describe("PlacesProvider", () => {
     expect(result.current.error).toBeNull();
     expect(result.current.places).toEqual([]);
   });
+
+  it("ignores AbortError search failures without surfacing an error", async () => {
+    const placeSearch: IPlaceSearchService = {
+      search: vi.fn(() =>
+        Promise.reject(
+          new DOMException("The operation was aborted.", "AbortError"),
+        ),
+      ),
+    };
+
+    const { result } = renderHook(() => usePlaces(), {
+      wrapper: createWrapper(placeSearch),
+    });
+
+    await act(async () => {
+      await result.current.runSearch();
+    });
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBeNull();
+  });
 });

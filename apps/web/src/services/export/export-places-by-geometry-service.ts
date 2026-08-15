@@ -1,4 +1,5 @@
 import type {
+  OverpassAttemptListener,
   Place,
   PlaceGeometryType,
   PlaceSearchCriteria,
@@ -16,11 +17,13 @@ export const EXPORT_GEOMETRY_TYPE_PRIORITY = [
  * @param criteria Active search filters.
  * @param geometryType Effective export geometry type.
  * @param signal Optional abort signal.
+ * @param onAttempt Optional Overpass progress callback.
  */
 export type ExportPlacesByGeometry = (
   criteria: PlaceSearchCriteria,
   geometryType: PlaceGeometryType,
   signal?: AbortSignal,
+  onAttempt?: OverpassAttemptListener,
 ) => Promise<Place[]>;
 
 /**
@@ -29,12 +32,14 @@ export type ExportPlacesByGeometry = (
  * @param geometryType Single geometry type selected in the modal.
  * @param exportByGeometry Search-service export requery.
  * @param signal Optional abort signal.
+ * @param onAttempt Optional Overpass progress callback.
  */
 export function preparePlacesForGeometryExport(
   criteria: PlaceSearchCriteria,
   geometryType: PlaceGeometryType,
   exportByGeometry: ExportPlacesByGeometry,
   signal?: AbortSignal,
+  onAttempt?: OverpassAttemptListener,
 ): Promise<Place[]> {
-  return exportByGeometry(criteria, geometryType, signal);
+  return exportByGeometry(criteria, geometryType, signal, onAttempt);
 }

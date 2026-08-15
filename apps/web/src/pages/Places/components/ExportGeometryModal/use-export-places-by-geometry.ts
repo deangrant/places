@@ -7,9 +7,11 @@ import {
 } from "@/services/export/places-csv-export-service";
 import type { IPlaceGeometryExporter } from "@/services/http/http-places-api-client";
 import type {
+  OverpassAttemptEvent,
   PlaceGeometryType,
   PlaceSearchCriteria,
 } from "@/types/places.types";
+import { mergeOverpassAttempt } from "@/utils/merge-overpass-attempt";
 
 /**
  * Options for the geometry CSV export hook.
@@ -41,6 +43,8 @@ export interface UseExportPlacesByGeometryResult {
   exporting: boolean;
   /** Starts export for the given geometry type. */
   handleExport: (geometryType: PlaceGeometryType) => void;
+  /** Live Overpass interpreter attempts for the in-flight export. */
+  overpassAttempts: readonly OverpassAttemptEvent[];
   /** Soft timeout countdown seconds remaining. */
   remainingSeconds: number;
 }
@@ -58,6 +62,9 @@ export function useExportPlacesByGeometry({
 }: UseExportPlacesByGeometryOptions): UseExportPlacesByGeometryResult {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [overpassAttempts, setOverpassAttempts] = useState<
+    OverpassAttemptEvent[]
+  >([]);
   const abortRef = useRef<AbortController | null>(null);
 
   const remainingSeconds = useQueryCountdown({ active: exporting });
@@ -87,15 +94,22 @@ export function useExportPlacesByGeometry({
 
       setExporting(true);
       setError(null);
+      setOverpassAttempts([]);
       const controller = new AbortController();
       abortRef.current = controller;
 
       preparePlacesForGeometryExport(
         criteria,
         geometryType,
-        (exportCriteria, type, signal) =>
-          placeExport.exportByGeometry(exportCriteria, type, signal),
+        (exportCriteria, type, signal, onAttempt) =>
+          placeExport.exportByGeometry(exportCriteria, type, signal, onAttempt),
         controller.signal,
+        (attempt) => {
+          if (abortRef.current !== controller) {
+            return;
+          }
+          setOverpassAttempts((prev) => mergeOverpassAttempt(prev, attempt));
+        },
       )
         .then((prepared) => {
           if (prepared.length === 0) {
@@ -120,6 +134,7 @@ export function useExportPlacesByGeometry({
           if (abortRef.current === controller) {
             abortRef.current = null;
           }
+          setOverpassAttempts([]);
           setExporting(false);
         });
     },
@@ -132,6 +147,7 @@ export function useExportPlacesByGeometry({
     error,
     exporting,
     handleExport,
+    overpassAttempts,
     remainingSeconds,
   };
 }

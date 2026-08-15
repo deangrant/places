@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type {
   BBox,
   MapViewState,
+  OverpassAttemptEvent,
   Place,
   PlaceSearchCriteria,
 } from "@/types/places.types";
@@ -34,6 +35,8 @@ export interface PlacesContextValue {
   loading: boolean;
   /** Current map camera state. */
   mapView: MapViewState;
+  /** Live Overpass interpreter attempts for the in-flight search. */
+  overpassAttempts: readonly OverpassAttemptEvent[];
   /** Places from the latest successful search. */
   places: Place[];
   /** Runs a search with the current criteria. */
@@ -63,6 +66,7 @@ export type PlacesSearchContextValue = Pick<
   | "criteria"
   | "error"
   | "loading"
+  | "overpassAttempts"
   | "places"
   | "runSearch"
   | "setCriteria"

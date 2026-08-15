@@ -6,6 +6,7 @@ import { Modal } from "@/components/core/Modal";
 import { Spinner } from "@/components/core/Spinner";
 import { usePlacesSearch } from "@/contexts/PlacesContext";
 import { useServices } from "@/contexts/ServicesContext";
+import { OverpassQueryStatus } from "@/pages/Places/components/OverpassQueryStatus";
 import { EXPORT_GEOMETRY_TYPE_PRIORITY } from "@/services/export/export-places-by-geometry-service";
 import { browserPlacesCsvDownloader } from "@/services/export/places-csv-export-service";
 import type { PlaceGeometryType } from "@/types/places.types";
@@ -60,6 +61,7 @@ export function ExportGeometryModal({
     error,
     exporting,
     handleExport,
+    overpassAttempts,
     remainingSeconds,
   } = useExportPlacesByGeometry({
     criteria,
@@ -206,6 +208,7 @@ export function ExportGeometryModal({
                 <p className={styles.countdown}>
                   Up to {formatCountdown(remainingSeconds)} remaining
                 </p>
+                <OverpassQueryStatus attempts={overpassAttempts} />
                 <Button onClick={cancelExport} variant="ghost">
                   Cancel
                 </Button>

@@ -1,5 +1,6 @@
 import type {
   OsmElement,
+  OverpassAttemptListener,
   OverpassResponse,
   PlaceSearchCriteria,
   SpatialScope,
@@ -9,10 +10,7 @@ import {
   type IAreaResolver,
   isFiniteBBox,
 } from "../geocoding/nominatim-area-resolver-service.js";
-import type {
-  IOverpassClient,
-  OverpassAttemptListener,
-} from "../overpass/overpass-http-client-service.js";
+import type { IOverpassClient } from "../overpass/overpass-http-client-service.js";
 import { describeOverpassRemark } from "../overpass/overpass-http-client-service.js";
 import type { IPlaceQueryBuilder } from "./place-query-builder-service.js";
 import { toOverpassAreaId } from "./place-query-builder-service.js";

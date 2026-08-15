@@ -122,10 +122,18 @@ Do not add new test/build frameworks for the split.
 
 ## 6. Success responses
 
-- Success bodies **must** be bare JSON DTOs (`PlaceSearchResult`, export places
-  payload). **Must not** wrap in `{ data, meta }` envelopes.
-- Clients **must** branch on HTTP status first; never encode failure as `200`
-  with an error object.
+- Default success bodies **must** be bare JSON DTOs (`PlaceSearchResult`, export
+  places payload). **Must not** wrap in `{ data, meta }` envelopes.
+- When the client sends `Accept: application/x-ndjson`, search/export **may**
+  stream newline-delimited progress then a final result:
+  - `{"type":"overpassAttempt",...}` — public Overpass mirror hostname/status
+    for loader UX (not a secret or internal host leak)
+  - `{"type":"result","body":…}` — same DTO as the JSON success body
+  - `{"type":"problem",…}` — domain failure after the stream has already
+    started (HTTP status stays 200 because headers are committed); pre-stream
+    failures still use `application/problem+json` with the real status
+- Clients **must** branch on HTTP status first for non-stream responses; never
+  encode failure as `200` with an error object for plain JSON.
 - Prefer **200** with a body for completed search/export.
 
 ---
@@ -135,8 +143,9 @@ Do not add new test/build frameworks for the split.
 - Error responses **must** use `Content-Type: application/problem+json`.
 - Problem bodies **must** include `type`, `title`, `status`, and `detail`.
 - Validation failures **should** include an `errors` map of field → messages.
-- **Must not** leak stack traces, secrets, or internal host details in
-  production responses.
+- **Must not** leak stack traces, secrets, or private infrastructure hostnames
+  in production responses. Public Overpass mirror hostnames in NDJSON attempt
+  events are intentional product UX.
 - Catalogue stable `type` URIs in [reference.md](reference.md).
 
 ---
@@ -168,7 +177,12 @@ Do not add new test/build frameworks for the split.
   network blips). Use exponential backoff with jitter when retrying.
 - Failover waits use bounded exponential backoff (`OVERPASS_RETRY_BASE_MS` /
   `OVERPASS_RETRY_MAX_MS`) plus jitter and **must** respect the caller abort
-  signal so disconnects do not start the next interpreter.
+  signal so a cancelled search does not start the next interpreter.
+- The Places route signal is **timeout-only** (`AbortSignal.timeout` for the
+  overall client budget). Do **not** wire `res`/`socket` `close` into that
+  signal: after NDJSON header flush those events false-abort live searches.
+  Browser cancel still aborts the fetch; the route timeout bounds leftover
+  server work.
 - **Must not** amplify load with unbounded retries against public OSM endpoints.
 - Long Overpass timeout **must not** mean infinite retries.
 

@@ -1,4 +1,6 @@
 import type {
+  OverpassAttemptEvent,
+  OverpassAttemptListener,
   Place,
   PlaceGeometryType,
   PlaceSearchCriteria,
@@ -16,10 +18,12 @@ export interface IPlaceSearchService {
    * Runs a Places search for the given criteria.
    * @param criteria User filters.
    * @param signal Optional abort signal.
+   * @param onAttempt Optional Overpass endpoint progress callback.
    */
   search: (
     criteria: PlaceSearchCriteria,
     signal?: AbortSignal,
+    onAttempt?: OverpassAttemptListener,
   ) => Promise<PlaceSearchResult>;
 }
 
@@ -32,11 +36,13 @@ export interface IPlaceGeometryExporter {
    * @param criteria Active search filters.
    * @param geometryType Effective export geometry type.
    * @param signal Optional abort signal.
+   * @param onAttempt Optional Overpass endpoint progress callback.
    */
   exportByGeometry: (
     criteria: PlaceSearchCriteria,
     geometryType: PlaceGeometryType,
     signal?: AbortSignal,
+    onAttempt?: OverpassAttemptListener,
   ) => Promise<Place[]>;
 }
 
@@ -61,8 +67,14 @@ export class HttpPlacesApiClient
   async search(
     criteria: PlaceSearchCriteria,
     signal?: AbortSignal,
+    onAttempt?: OverpassAttemptListener,
   ): Promise<PlaceSearchResult> {
-    const body = await this.postJson("/places/search", criteria, signal);
+    const body = await this.postNdjson(
+      "/places/search",
+      criteria,
+      signal,
+      onAttempt,
+    );
     return parsePlaceSearchResult(body);
   }
 
@@ -73,26 +85,29 @@ export class HttpPlacesApiClient
     criteria: PlaceSearchCriteria,
     geometryType: PlaceGeometryType,
     signal?: AbortSignal,
+    onAttempt?: OverpassAttemptListener,
   ): Promise<Place[]> {
-    const body = await this.postJson(
+    const body = await this.postNdjson(
       "/places/export",
       { criteria, geometryType },
       signal,
+      onAttempt,
     );
     return parseExportPlaces(body);
   }
 
   /**
-   * POSTs JSON to the API and maps problem+json failures to Error.
-   * Success bodies are cast under the monorepo DTO contract after a light shape check.
+   * POSTs JSON and reads an NDJSON progress stream (attempts + final result).
    * @param path API path.
    * @param body Request JSON body.
    * @param signal Optional abort signal.
+   * @param onAttempt Optional Overpass progress callback.
    */
-  private async postJson(
+  private async postNdjson(
     path: string,
     body: unknown,
     signal?: AbortSignal,
+    onAttempt?: OverpassAttemptListener,
   ): Promise<unknown> {
     const timeout = AbortSignal.timeout(OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000);
     const combined = combineAbortSignals(signal, timeout);
@@ -102,7 +117,7 @@ export class HttpPlacesApiClient
       response = await fetch(`${this.baseUrl}${path}`, {
         body: JSON.stringify(body),
         headers: {
-          Accept: "application/json",
+          Accept: "application/x-ndjson",
           "Content-Type": "application/json",
         },
         method: "POST",
@@ -128,12 +143,115 @@ export class HttpPlacesApiClient
       throw new Error(await readApiErrorMessage(response));
     }
 
-    return response.json();
+    return readNdjsonResult(response, onAttempt);
   }
 }
 
 const UNEXPECTED_API_RESPONSE =
   "Places API returned an unexpected response. Deploy the web app and API from the same revision.";
+
+/**
+ * Reads NDJSON attempt/result/problem lines until a final result or problem.
+ * @param response OK fetch response.
+ * @param onAttempt Optional progress callback.
+ */
+async function readNdjsonResult(
+  response: Response,
+  onAttempt?: OverpassAttemptListener,
+): Promise<unknown> {
+  if (!response.body) {
+    throw new Error(UNEXPECTED_API_RESPONSE);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let sawProgress = false;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        continue;
+      }
+      const parsed = parseNdjsonLine(trimmed);
+      if (parsed.kind === "attempt") {
+        sawProgress = true;
+        onAttempt?.(parsed.event);
+        continue;
+      }
+      if (parsed.kind === "problem") {
+        throw new Error(parsed.detail);
+      }
+      return parsed.body;
+    }
+  }
+
+  const trailing = buffer.trim();
+  if (trailing) {
+    const parsed = parseNdjsonLine(trailing);
+    if (parsed.kind === "attempt") {
+      sawProgress = true;
+      onAttempt?.(parsed.event);
+    } else if (parsed.kind === "problem") {
+      throw new Error(parsed.detail);
+    } else {
+      return parsed.body;
+    }
+  }
+
+  // Intentional: API quiet-ends NDJSON on cancel after attempt lines (no result
+  // or problem). Treat that EOF as AbortError so UI cancel stays silent.
+  if (sawProgress) {
+    throw new DOMException("The operation was aborted.", "AbortError");
+  }
+
+  throw new Error(UNEXPECTED_API_RESPONSE);
+}
+
+type NdjsonParsed =
+  | { kind: "attempt"; event: OverpassAttemptEvent }
+  | { kind: "result"; body: unknown }
+  | { kind: "problem"; detail: string };
+
+/**
+ * Parses one NDJSON progress/result/problem line.
+ * @param line Trimmed JSON line.
+ */
+function parseNdjsonLine(line: string): NdjsonParsed {
+  let value: unknown;
+  try {
+    value = JSON.parse(line);
+  } catch {
+    throw new Error(UNEXPECTED_API_RESPONSE);
+  }
+  if (!isPlainObject(value) || typeof value.type !== "string") {
+    throw new Error(UNEXPECTED_API_RESPONSE);
+  }
+  if (value.type === "overpassAttempt") {
+    const { type: _type, ...event } = value;
+    return { event: event as unknown as OverpassAttemptEvent, kind: "attempt" };
+  }
+  if (value.type === "result") {
+    return { body: value.body, kind: "result" };
+  }
+  if (value.type === "problem") {
+    const detail =
+      typeof value.detail === "string"
+        ? value.detail
+        : "Places API request failed.";
+    return { detail, kind: "problem" };
+  }
+  throw new Error(UNEXPECTED_API_RESPONSE);
+}
 
 /**
  * Minimal search success shape check (not a full Place schema).
@@ -143,7 +261,7 @@ function parsePlaceSearchResult(value: unknown): PlaceSearchResult {
   if (!(isPlainObject(value) && Array.isArray(value.places))) {
     throw new Error(UNEXPECTED_API_RESPONSE);
   }
-  return value as PlaceSearchResult;
+  return value as unknown as PlaceSearchResult;
 }
 
 /**

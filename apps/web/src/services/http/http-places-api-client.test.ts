@@ -33,6 +33,14 @@ function hangingFetch(
   });
 }
 
+function ndjsonResponse(lines: unknown[]): Response {
+  const body = `${lines.map((line) => JSON.stringify(line)).join("\n")}\n`;
+  return new Response(body, {
+    headers: { "Content-Type": "application/x-ndjson" },
+    status: 200,
+  });
+}
+
 describe("HttpPlacesApiClient abort fallback", () => {
   it("cancels fetch without AbortSignal.any when the caller aborts", async () => {
     const originalAny = AbortSignal.any;
@@ -43,7 +51,7 @@ describe("HttpPlacesApiClient abort fallback", () => {
 
     let fetchSignal: AbortSignal | undefined;
     const fetchMock = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
-      fetchSignal = init?.signal;
+      fetchSignal = init?.signal ?? undefined;
       return hangingFetch(_input, init);
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -74,24 +82,34 @@ describe("HttpPlacesApiClient abort fallback", () => {
 
   it("passes a timeout signal when no caller signal is provided", async () => {
     const fetchMock = vi.fn(async () =>
-      Response.json({ places: [], truncated: false }),
+      ndjsonResponse([
+        { body: { places: [], scope: {}, truncated: false }, type: "result" },
+      ]),
     );
     vi.stubGlobal("fetch", fetchMock);
 
     const client = new HttpPlacesApiClient("http://api.test");
     await client.search(criteria);
 
-    const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+    const [, init] = fetchMock.mock.calls[0] as unknown as [
+      RequestInfo | URL,
+      RequestInit | undefined,
+    ];
     expect(init?.signal).toBeInstanceOf(AbortSignal);
+    expect((init?.headers as Record<string, string> | undefined)?.Accept).toBe(
+      "application/x-ndjson",
+    );
   });
 });
 
 describe("HttpPlacesApiClient response shape", () => {
-  it("accepts a search body with a places array", async () => {
+  it("accepts a search result line with a places array", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
-        Response.json({ places: [], scope: {}, truncated: false }),
+        ndjsonResponse([
+          { body: { places: [], scope: {}, truncated: false }, type: "result" },
+        ]),
       ),
     );
     const client = new HttpPlacesApiClient("http://api.test");
@@ -102,10 +120,12 @@ describe("HttpPlacesApiClient response shape", () => {
     });
   });
 
-  it("rejects a search body without a places array", async () => {
+  it("rejects a search result without a places array", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => Response.json({ truncated: false })),
+      vi.fn(async () =>
+        ndjsonResponse([{ body: { truncated: false }, type: "result" }]),
+      ),
     );
     const client = new HttpPlacesApiClient("http://api.test");
     await expect(client.search(criteria)).rejects.toThrow(
@@ -113,15 +133,92 @@ describe("HttpPlacesApiClient response shape", () => {
     );
   });
 
-  it("rejects an export body without a places array", async () => {
+  it("rejects an export result without a places array", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => Response.json({})),
+      vi.fn(async () => ndjsonResponse([{ body: {}, type: "result" }])),
     );
     const client = new HttpPlacesApiClient("http://api.test");
     await expect(client.exportByGeometry(criteria, "POINT")).rejects.toThrow(
       /Deploy the web app and API from the same revision/,
     );
+  });
+
+  it("forwards overpassAttempt lines to onAttempt", async () => {
+    const onAttempt = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        ndjsonResponse([
+          {
+            endpoint: "https://overpass.example/api/interpreter",
+            hostname: "overpass.example",
+            index: 0,
+            status: "started",
+            type: "overpassAttempt",
+          },
+          {
+            endpoint: "https://overpass.example/api/interpreter",
+            hostname: "overpass.example",
+            index: 0,
+            status: "succeeded",
+            type: "overpassAttempt",
+          },
+          {
+            body: { places: [], scope: {}, truncated: false },
+            type: "result",
+          },
+        ]),
+      ),
+    );
+    const client = new HttpPlacesApiClient("http://api.test");
+    await client.search(criteria, undefined, onAttempt);
+    expect(onAttempt).toHaveBeenCalledTimes(2);
+    expect(onAttempt.mock.calls[0]?.[0]).toMatchObject({
+      hostname: "overpass.example",
+      status: "started",
+    });
+  });
+
+  it("throws detail from an embedded problem line", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        ndjsonResponse([
+          {
+            detail: "Could not reach the Overpass API. Try again.",
+            status: 502,
+            title: "Upstream unavailable",
+            type: "problem",
+          },
+        ]),
+      ),
+    );
+    const client = new HttpPlacesApiClient("http://api.test");
+    await expect(client.search(criteria)).rejects.toThrow(
+      "Could not reach the Overpass API. Try again.",
+    );
+  });
+
+  it("treats a stream that ends after attempts without a result as abort", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        ndjsonResponse([
+          {
+            endpoint: "https://overpass.example/api/interpreter",
+            hostname: "overpass.example",
+            index: 0,
+            status: "started",
+            type: "overpassAttempt",
+          },
+        ]),
+      ),
+    );
+    const client = new HttpPlacesApiClient("http://api.test");
+    await expect(client.search(criteria)).rejects.toMatchObject({
+      name: "AbortError",
+    });
   });
 });
 

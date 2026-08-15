@@ -1,6 +1,12 @@
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import type { Place, PlaceSearchResult } from "places-core";
+import type {
+  OverpassAttemptListener,
+  Place,
+  PlaceGeometryType,
+  PlaceSearchCriteria,
+  PlaceSearchResult,
+} from "places-core";
 import { vi } from "vitest";
 import type { ApiConfig } from "../config.js";
 import { createRequestListener } from "../create-app.js";
@@ -39,8 +45,17 @@ export function testConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
  * @param overrides Optional search/export implementations.
  */
 export function mockServices(overrides?: {
-  exportByGeometry?: () => Promise<Place[]>;
-  search?: () => Promise<PlaceSearchResult>;
+  exportByGeometry?: (
+    criteria: PlaceSearchCriteria,
+    geometryType: PlaceGeometryType,
+    signal?: AbortSignal,
+    onAttempt?: OverpassAttemptListener,
+  ) => Promise<Place[]>;
+  search?: (
+    criteria: PlaceSearchCriteria,
+    signal?: AbortSignal,
+    onAttempt?: OverpassAttemptListener,
+  ) => Promise<PlaceSearchResult>;
 }): ApiServices {
   const search = overrides?.search ?? (async () => EMPTY_SEARCH_RESULT);
   const exportByGeometry =

@@ -31,6 +31,11 @@ export {
   type ICategoryTaxonomy,
 } from "./services/taxonomy/category-taxonomy-service.js";
 export type {
+  OverpassAttemptEvent,
+  OverpassAttemptListener,
+  OverpassAttemptStatus,
+} from "./types/overpass-attempt.types.js";
+export type {
   BBox,
   CategoryDefinition,
   GeocodeResult,

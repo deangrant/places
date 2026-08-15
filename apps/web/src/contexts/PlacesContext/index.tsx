@@ -12,6 +12,7 @@ import { DEFAULT_MAP_VIEW } from "@/constants/api.constants";
 import { useServices } from "@/contexts/ServicesContext";
 import type { MapViewState, PlaceSearchCriteria } from "@/types/places.types";
 import { boundsFromPoints } from "@/utils/geo";
+import { mergeOverpassAttempt } from "@/utils/merge-overpass-attempt";
 import type {
   PlacesContextValue,
   PlacesMapContextValue,
@@ -34,6 +35,9 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
   const [criteria, setCriteriaState] =
     useState<PlaceSearchCriteria>(initialCriteria);
   const [mapView, setMapView] = useState<MapViewState>(DEFAULT_MAP_VIEW);
+  const [overpassAttempts, setOverpassAttempts] = useState<
+    PlacesContextValue["overpassAttempts"]
+  >([]);
   const [session, dispatch] = useReducer(
     placesSessionReducer,
     initialPlacesSessionState,
@@ -126,12 +130,19 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
     searchRequestIdRef.current = requestId;
     const controller = new AbortController();
     abortRef.current = controller;
+    setOverpassAttempts([]);
     dispatch({ type: "search/started" });
 
     try {
       const result = await placeSearchRef.current.search(
         criteria,
         controller.signal,
+        (attempt) => {
+          if (searchRequestIdRef.current !== requestId) {
+            return;
+          }
+          setOverpassAttempts((prev) => mergeOverpassAttempt(prev, attempt));
+        },
       );
       if (searchRequestIdRef.current !== requestId) {
         return;
@@ -152,7 +163,8 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
     } catch (searchError) {
       if (
         searchRequestIdRef.current !== requestId ||
-        controller.signal.aborted
+        controller.signal.aborted ||
+        isAbortError(searchError)
       ) {
         return;
       }
@@ -163,6 +175,7 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
       dispatch({ message, type: "search/failed" });
     } finally {
       if (searchRequestIdRef.current === requestId) {
+        setOverpassAttempts([]);
         dispatch({ type: "search/finished" });
       }
     }
@@ -182,6 +195,7 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
       fitResultsBounds,
       loading: session.loading,
       mapView,
+      overpassAttempts,
       places: session.places,
       runSearch,
       selectedPlace,
@@ -197,6 +211,7 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
       criteria,
       fitResultsBounds,
       mapView,
+      overpassAttempts,
       runSearch,
       selectedPlace,
       selectPlace,
@@ -231,6 +246,7 @@ export function usePlacesSearch(): PlacesSearchContextValue {
     criteria,
     error,
     loading,
+    overpassAttempts,
     places,
     runSearch,
     setCriteria,
@@ -241,6 +257,7 @@ export function usePlacesSearch(): PlacesSearchContextValue {
     criteria,
     error,
     loading,
+    overpassAttempts,
     places,
     runSearch,
     setCriteria,
@@ -277,4 +294,16 @@ export function usePlacesSelection(): PlacesSelectionContextValue {
     selectPlace,
     truncated,
   };
+}
+
+/**
+ * True for AbortError cancellations (including NDJSON quiet-end mapped to AbortError).
+ */
+function isAbortError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    (error as { name?: unknown }).name === "AbortError"
+  );
 }

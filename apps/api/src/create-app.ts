@@ -1,8 +1,17 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { OverpassAttemptListener } from "places-core";
 import type { ApiConfig } from "./config.js";
 import type { ApiServices } from "./create-services.js";
 import { applyCors } from "./http/cors.js";
 import { mapDomainError } from "./http/map-domain-error.js";
+import {
+  beginNdjsonProgress,
+  overpassAttemptLine,
+  problemLine,
+  resultLine,
+  wantsNdjsonProgress,
+  writeNdjsonLine,
+} from "./http/ndjson-progress.js";
 import {
   parseJsonBody,
   problem,
@@ -16,8 +25,10 @@ import {
   rateLimitHeaders,
 } from "./http/rate-limit.js";
 import {
-  createPlacesRequestSignal,
+  createPlacesRouteTimeoutSignal,
+  errorForDomainMapping,
   isResponseClosed,
+  shouldQuietEndOnAbort,
 } from "./http/request-abort-signal.js";
 import {
   validatePlaceExportBody,
@@ -159,12 +170,25 @@ async function handleSearch(
       return;
     }
 
+    const stream = wantsNdjsonProgress(req.headers.accept);
+    const onAttempt = stream ? ndjsonAttemptWriter(res) : undefined;
+    const routeSignal = createPlacesRouteTimeoutSignal();
+
     try {
+      if (stream && onAttempt) {
+        beginNdjsonProgress(res);
+      }
       const result = await services.placeSearch.search(
         validated.value,
-        createPlacesRequestSignal(req, res),
+        routeSignal,
+        onAttempt,
       );
       if (isResponseClosed(res)) {
+        return;
+      }
+      if (stream) {
+        writeNdjsonLine(res, resultLine(result));
+        res.end();
         return;
       }
       sendJson(res, 200, result);
@@ -172,7 +196,19 @@ async function handleSearch(
       if (isResponseClosed(res)) {
         return;
       }
-      sendProblem(res, mapDomainError(error));
+      if (shouldQuietEndOnAbort(error, routeSignal)) {
+        if (!res.writableEnded) {
+          res.end();
+        }
+        return;
+      }
+      const mapped = mapDomainError(errorForDomainMapping(error, routeSignal));
+      if (stream && res.headersSent) {
+        writeNdjsonLine(res, problemLine(mapped));
+        res.end();
+        return;
+      }
+      sendProblem(res, mapped);
     }
   } finally {
     acquired.release();
@@ -199,13 +235,26 @@ async function handleExport(
       return;
     }
 
+    const stream = wantsNdjsonProgress(req.headers.accept);
+    const onAttempt = stream ? ndjsonAttemptWriter(res) : undefined;
+    const routeSignal = createPlacesRouteTimeoutSignal();
+
     try {
+      if (stream && onAttempt) {
+        beginNdjsonProgress(res);
+      }
       const places = await services.placeExport.exportByGeometry(
         validated.value.criteria,
         validated.value.geometryType,
-        createPlacesRequestSignal(req, res),
+        routeSignal,
+        onAttempt,
       );
       if (isResponseClosed(res)) {
+        return;
+      }
+      if (stream) {
+        writeNdjsonLine(res, resultLine({ places }));
+        res.end();
         return;
       }
       sendJson(res, 200, { places });
@@ -213,11 +262,39 @@ async function handleExport(
       if (isResponseClosed(res)) {
         return;
       }
-      sendProblem(res, mapDomainError(error));
+      if (shouldQuietEndOnAbort(error, routeSignal)) {
+        if (!res.writableEnded) {
+          res.end();
+        }
+        return;
+      }
+      const mapped = mapDomainError(errorForDomainMapping(error, routeSignal));
+      if (stream && res.headersSent) {
+        writeNdjsonLine(res, problemLine(mapped));
+        res.end();
+        return;
+      }
+      sendProblem(res, mapped);
     }
   } finally {
     acquired.release();
   }
+}
+
+/**
+ * Writes Overpass attempt events as NDJSON lines (starts the stream on first event).
+ * @param res Node response.
+ */
+function ndjsonAttemptWriter(res: ServerResponse): OverpassAttemptListener {
+  return (event) => {
+    if (isResponseClosed(res)) {
+      return;
+    }
+    if (!res.headersSent) {
+      beginNdjsonProgress(res);
+    }
+    writeNdjsonLine(res, overpassAttemptLine(event));
+  };
 }
 
 /**

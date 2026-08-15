@@ -151,6 +151,7 @@ describe("ExportGeometryModal", () => {
       {},
       "POINT",
       expect.any(AbortSignal),
+      expect.any(Function),
     );
     expect(onExported).toHaveBeenCalledWith("POINT");
     expect(onClose).toHaveBeenCalled();
@@ -178,6 +179,7 @@ describe("ExportGeometryModal", () => {
       {},
       "POLYGON",
       expect.any(AbortSignal),
+      expect.any(Function),
     );
     expect(downloadPlacesCsv).toHaveBeenCalledWith([polygonPlace]);
   });
