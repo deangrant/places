@@ -61,7 +61,6 @@ export function mockServices(overrides?: {
   const exportByGeometry =
     overrides?.exportByGeometry ?? (async () => [] as Place[]);
   return {
-    brandCatalog: {} as ApiServices["brandCatalog"],
     placeExport: {
       exportByGeometry: vi.fn(exportByGeometry),
     },

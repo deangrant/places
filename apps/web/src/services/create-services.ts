@@ -1,9 +1,4 @@
-import {
-  BrandCatalog,
-  CategoryTaxonomy,
-  type IBrandCatalog,
-  type ICategoryLookup,
-} from "places-core";
+import { CategoryTaxonomy, type ICategoryLookup } from "places-core";
 import {
   HttpPlacesApiClient,
   type IPlaceGeometryExporter,
@@ -16,8 +11,6 @@ import {
  * UI and contexts depend on this contract, not concrete adapters.
  */
 export interface AppServices {
-  /** Brand autocomplete catalog. */
-  brandCatalog: IBrandCatalog;
   /** Geometry export re-query for CSV downloads. */
   placeExport: IPlaceGeometryExporter;
   /** Places map search. */
@@ -33,7 +26,6 @@ export interface AppServices {
 export function createServices(): AppServices {
   const api = new HttpPlacesApiClient(resolveApiBaseUrl());
   return {
-    brandCatalog: new BrandCatalog(),
     placeExport: api,
     placeSearch: api,
     taxonomy: new CategoryTaxonomy(),

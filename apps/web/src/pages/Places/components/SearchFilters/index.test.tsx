@@ -63,7 +63,6 @@ function renderFilters(): {
     ),
   };
   const services: AppServices = {
-    brandCatalog: { search: vi.fn(() => []) },
     placeExport,
     placeSearch,
     taxonomy: {
@@ -95,17 +94,27 @@ function renderFilters(): {
   };
 }
 
+/**
+ * Opens a labeled Select and chooses an option by visible label.
+ * @param fieldLabel FormField / trigger accessible name.
+ * @param optionLabel Option text in the listbox.
+ */
+function chooseSelectOption(fieldLabel: string, optionLabel: string): void {
+  fireEvent.click(screen.getByLabelText(fieldLabel));
+  fireEvent.click(screen.getByRole("option", { name: optionLabel }));
+}
+
 describe("SearchFilters", () => {
   it("shows brand, place name, and geography on the primary strip by default", () => {
     renderFilters();
     expect(screen.getByPlaceholderText("e.g. Starbucks")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Contains…")).toBeInTheDocument();
-    expect(screen.getByLabelText("Any country")).toBeInTheDocument();
+    expect(screen.getByLabelText("Country")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("e.g. California")).toBeInTheDocument();
     expect(
       screen.getByPlaceholderText("e.g. San Francisco"),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText("Any category")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Category")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Tag")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Advanced" })).toHaveAttribute(
       "aria-expanded",
@@ -116,24 +125,18 @@ describe("SearchFilters", () => {
   it("omits subcategory until a top category is selected in Advanced", () => {
     const { getCriteria } = renderFilters();
     fireEvent.click(screen.getByRole("button", { name: "Advanced" }));
-    expect(screen.queryByLabelText("Any subcategory")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Subcategory")).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Any category"), {
-      target: { value: "Food Services" },
-    });
+    chooseSelectOption("Category", "Food Services");
     expect(getCriteria().categoryId).toBeUndefined();
-    expect(screen.getByLabelText("Any subcategory")).toBeInTheDocument();
+    expect(screen.getByLabelText("Subcategory")).toBeInTheDocument();
   });
 
   it("keeps categoryId unset for top category, empty subcategory, and geography", () => {
     const { getCriteria } = renderFilters();
     fireEvent.click(screen.getByRole("button", { name: "Advanced" }));
-    fireEvent.change(screen.getByLabelText("Any category"), {
-      target: { value: "Food Services" },
-    });
-    fireEvent.change(screen.getByLabelText("Any country"), {
-      target: { value: "US" },
-    });
+    chooseSelectOption("Category", "Food Services");
+    chooseSelectOption("Country", "United States");
     fireEvent.change(screen.getByPlaceholderText("e.g. San Francisco"), {
       target: { value: "Seattle" },
     });
@@ -147,17 +150,13 @@ describe("SearchFilters", () => {
   it("sets brand without inventing a categoryId when subcategory is empty", () => {
     const { getCriteria } = renderFilters();
     fireEvent.click(screen.getByRole("button", { name: "Advanced" }));
-    fireEvent.change(screen.getByLabelText("Any category"), {
-      target: { value: "Food Services" },
-    });
+    chooseSelectOption("Category", "Food Services");
     const brand = screen.getByPlaceholderText("e.g. Starbucks");
     fireEvent.change(brand, { target: { value: "Starbucks" } });
     expect(getCriteria().brand).toBe("Starbucks");
     expect(getCriteria().categoryId).toBeUndefined();
 
-    fireEvent.change(screen.getByLabelText("Any subcategory"), {
-      target: { value: "coffee-shops" },
-    });
+    chooseSelectOption("Subcategory", "Coffee Shops");
     expect(getCriteria().categoryId).toBe("coffee-shops");
     expect(getCriteria().brand).toBe("Starbucks");
   });
@@ -170,11 +169,9 @@ describe("SearchFilters", () => {
       "aria-expanded",
       "true",
     );
-    fireEvent.change(screen.getByLabelText("Any category"), {
-      target: { value: "Food Services" },
-    });
+    chooseSelectOption("Category", "Food Services");
     expect(getCriteria().categoryId).toBeUndefined();
-    expect(screen.getByLabelText("Any subcategory")).toBeInTheDocument();
+    expect(screen.getByLabelText("Subcategory")).toBeInTheDocument();
   });
 
   it("omits OSM tag value until a key is selected and clears value when key clears", () => {
@@ -183,9 +180,7 @@ describe("SearchFilters", () => {
 
     expect(screen.queryByPlaceholderText("e.g. cafe")).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Any key"), {
-      target: { value: "amenity" },
-    });
+    chooseSelectOption("Tag", "amenity");
     fireEvent.change(screen.getByPlaceholderText("e.g. cafe"), {
       target: { value: "cafe" },
     });
@@ -194,9 +189,7 @@ describe("SearchFilters", () => {
       osmTagValue: "cafe",
     });
 
-    fireEvent.change(screen.getByLabelText("Any key"), {
-      target: { value: "" },
-    });
+    chooseSelectOption("Tag", "Any key");
     expect(getCriteria().osmTagKey).toBeUndefined();
     expect(getCriteria().osmTagValue).toBe("");
     expect(screen.queryByPlaceholderText("e.g. cafe")).not.toBeInTheDocument();
@@ -205,12 +198,8 @@ describe("SearchFilters", () => {
   it("shows clearable chips for advanced values while the panel is collapsed", () => {
     const { getCriteria } = renderFilters();
     fireEvent.click(screen.getByRole("button", { name: "Advanced" }));
-    fireEvent.change(screen.getByLabelText("Any category"), {
-      target: { value: "Food Services" },
-    });
-    fireEvent.change(screen.getByLabelText("Any subcategory"), {
-      target: { value: "coffee-shops" },
-    });
+    chooseSelectOption("Category", "Food Services");
+    chooseSelectOption("Subcategory", "Coffee Shops");
     fireEvent.click(screen.getByRole("button", { name: /Advanced/ }));
 
     expect(screen.getByText("1")).toBeInTheDocument();
@@ -230,18 +219,12 @@ describe("SearchFilters", () => {
 
   it("keeps brand and country limitation copy as titles", () => {
     renderFilters();
-    expect(
-      screen.getByTitle(
-        "Exact OSM brand match (suggestions are helpers only).",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByTitle("Exact OSM brand match.")).toBeInTheDocument();
     expect(
       screen.getByTitle("Curated country list — not every ISO code."),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText(
-        "Exact OSM brand match (suggestions are helpers only).",
-      ),
+      screen.queryByText("Exact OSM brand match."),
     ).not.toBeInTheDocument();
   });
 });

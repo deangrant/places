@@ -45,7 +45,6 @@ function createWrapper(placeSearch: IPlaceSearchService) {
     exportByGeometry: vi.fn(() => Promise.resolve([])),
   };
   const services: AppServices = {
-    brandCatalog: { search: () => [] },
     placeExport,
     placeSearch,
     taxonomy: {

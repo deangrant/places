@@ -109,7 +109,6 @@ function renderModal(
   };
 
   const services: AppServices = {
-    brandCatalog: { search: vi.fn(() => []) },
     placeExport,
     placeSearch,
     taxonomy: {

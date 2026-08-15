@@ -1,4 +1,3 @@
-export { BRAND_CATALOG } from "./constants/brands.constants.js";
 export {
   CATEGORY_DEFINITIONS,
   COUNTRY_OPTIONS,
@@ -19,10 +18,6 @@ export {
   OVERPASS_TIMEOUT_SECONDS,
   RESULT_LIMIT,
 } from "./constants/overpass.constants.js";
-export {
-  BrandCatalog,
-  type IBrandCatalog,
-} from "./services/taxonomy/brand-catalog-service.js";
 export {
   CategoryTaxonomy,
   formatCategoryLabel,

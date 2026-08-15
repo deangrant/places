@@ -1,5 +1,5 @@
 /**
- * One option in a native Select control.
+ * One option in a Select listbox.
  */
 export interface SelectOption {
   /** Human-readable option label. */
@@ -16,7 +16,7 @@ export interface SelectProps {
   "aria-label"?: string;
   /** Disables selection. */
   disabled?: boolean;
-  /** Optional id forwarded to the select element. */
+  /** Optional id forwarded to the trigger for FormField labeling. */
   id?: string;
   /** Called with the newly selected value. */
   onChange: (value: string) => void;

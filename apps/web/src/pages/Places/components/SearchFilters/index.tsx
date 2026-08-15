@@ -4,7 +4,6 @@ import { useCallback, useId, useMemo, useState } from "react";
 import { Button } from "@/components/core/Button";
 import { Input } from "@/components/core/Input";
 import { Select } from "@/components/core/Select";
-import { Autocomplete } from "@/components/patterns/Autocomplete";
 import { FormField } from "@/components/patterns/FormField";
 import { usePlacesSearch } from "@/contexts/PlacesContext";
 import { useServices } from "@/contexts/ServicesContext";
@@ -20,7 +19,7 @@ type AdvancedChip = {
 export function SearchFilters() {
   const { criteria, setCriteria, loading, runSearch, error } =
     usePlacesSearch();
-  const { brandCatalog, taxonomy } = useServices();
+  const { taxonomy } = useServices();
   const [selectedTop, setSelectedTop] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const advancedPanelId = useId();
@@ -75,11 +74,6 @@ export function SearchFilters() {
     [],
   );
 
-  const brandSuggestions = useMemo(
-    () => brandCatalog.search(criteria.brand ?? ""),
-    [brandCatalog, criteria.brand],
-  );
-
   const advancedChips = useMemo((): AdvancedChip[] => {
     const chips: AdvancedChip[] = [];
     if (leafCategory) {
@@ -116,13 +110,6 @@ export function SearchFilters() {
   const advancedActiveCount = advancedChips.length;
 
   const handleBrandChange = useCallback(
-    (value: string) => {
-      setCriteria({ brand: value });
-    },
-    [setCriteria],
-  );
-
-  const handleBrandSelect = useCallback(
     (value: string) => {
       setCriteria({ brand: value });
     },
@@ -210,13 +197,12 @@ export function SearchFilters() {
     <section aria-label="Place filters" className={styles.root}>
       <div className={styles.primaryRow}>
         <FormField htmlFor="brand" label="Brand">
-          <div title="Exact OSM brand match (suggestions are helpers only).">
-            <Autocomplete
+          <div title="Exact OSM brand match.">
+            <Input
               id="brand"
               onChange={handleBrandChange}
-              onSelect={handleBrandSelect}
+              onKeyDown={handleSearchKeyDown}
               placeholder="e.g. Starbucks"
-              suggestions={brandSuggestions}
               value={criteria.brand ?? ""}
             />
           </div>

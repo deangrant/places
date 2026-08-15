@@ -1,5 +1,4 @@
 import {
-  BrandCatalog,
   CategoryTaxonomy,
   NOMINATIM_ENDPOINT,
   OVERPASS_ATTEMPT_TIMEOUT_SECONDS,
@@ -20,8 +19,6 @@ import { PlaceSearchService } from "./services/places/place-search-service.js";
  * Service graph exposed to HTTP route handlers.
  */
 export interface ApiServices {
-  /** Brand catalog (available for future admin routes). */
-  brandCatalog: BrandCatalog;
   /** Geometry export orchestrator. */
   placeExport: IPlaceGeometryExporter;
   /** Places search orchestrator. */
@@ -36,7 +33,6 @@ export interface ApiServices {
  */
 export function createApiServices(config: ApiConfig): ApiServices {
   const taxonomy = new CategoryTaxonomy();
-  const brandCatalog = new BrandCatalog();
   const overpass = new OverpassHttpClient(
     config.overpassEndpoints ?? OVERPASS_ENDPOINTS,
     OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
@@ -66,7 +62,6 @@ export function createApiServices(config: ApiConfig): ApiServices {
   );
 
   return {
-    brandCatalog,
     placeExport,
     placeSearch,
     taxonomy,
