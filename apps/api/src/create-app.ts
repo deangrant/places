@@ -11,6 +11,11 @@ import {
   sendProblem,
 } from "./http/problem.js";
 import {
+  clientIpFromRequest,
+  PlacesRateLimiter,
+  rateLimitHeaders,
+} from "./http/rate-limit.js";
+import {
   validatePlaceExportBody,
   validatePlaceSearchCriteria,
 } from "./validation/places-body.js";
@@ -25,15 +30,19 @@ const VALIDATION_MESSAGE =
  * Creates the Node request listener for the Places API.
  * @param config Process configuration.
  * @param services Wired domain services.
+ * @param rateLimiter Optional limiter (defaults to a new in-memory instance).
  */
 export function createRequestListener(
   config: ApiConfig,
   services: ApiServices,
+  rateLimiter: PlacesRateLimiter = new PlacesRateLimiter(config.rateLimit),
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
-    handleRequest(req, res, config, services).catch((error: unknown) => {
-      sendProblem(res, mapUnexpectedError(error));
-    });
+    handleRequest(req, res, config, services, rateLimiter).catch(
+      (error: unknown) => {
+        sendProblem(res, mapUnexpectedError(error));
+      },
+    );
   };
 }
 
@@ -42,6 +51,7 @@ async function handleRequest(
   res: ServerResponse,
   config: ApiConfig,
   services: ApiServices,
+  rateLimiter: PlacesRateLimiter,
 ): Promise<void> {
   try {
     if (!applyCors(req, res, config.corsOrigins)) {
@@ -77,12 +87,12 @@ async function handleRequest(
     }
 
     if (req.method === "POST" && path === "/places/search") {
-      await handleSearch(req, res, config, services);
+      await handleSearch(req, res, config, services, rateLimiter);
       return;
     }
 
     if (req.method === "POST" && path === "/places/export") {
-      await handleExport(req, res, config, services);
+      await handleExport(req, res, config, services, rateLimiter);
       return;
     }
 
@@ -118,22 +128,32 @@ async function handleSearch(
   res: ServerResponse,
   config: ApiConfig,
   services: ApiServices,
+  rateLimiter: PlacesRateLimiter,
 ): Promise<void> {
-  const body = await readJson(req, config.maxBodyBytes);
-  const validated = validatePlaceSearchCriteria(body);
-  if (!validated.ok) {
-    sendProblem(res, validated.problem);
+  const acquired = acquirePlacesLimit(req, res, rateLimiter);
+  if (!acquired) {
     return;
   }
 
   try {
-    const result = await services.placeSearch.search(
-      validated.value,
-      AbortSignal.timeout(OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000),
-    );
-    sendJson(res, 200, result);
-  } catch (error) {
-    sendProblem(res, mapDomainError(error));
+    const body = await readJson(req, config.maxBodyBytes);
+    const validated = validatePlaceSearchCriteria(body);
+    if (!validated.ok) {
+      sendProblem(res, validated.problem);
+      return;
+    }
+
+    try {
+      const result = await services.placeSearch.search(
+        validated.value,
+        AbortSignal.timeout(OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000),
+      );
+      sendJson(res, 200, result);
+    } catch (error) {
+      sendProblem(res, mapDomainError(error));
+    }
+  } finally {
+    acquired.release();
   }
 }
 
@@ -142,24 +162,79 @@ async function handleExport(
   res: ServerResponse,
   config: ApiConfig,
   services: ApiServices,
+  rateLimiter: PlacesRateLimiter,
 ): Promise<void> {
-  const body = await readJson(req, config.maxBodyBytes);
-  const validated = validatePlaceExportBody(body);
-  if (!validated.ok) {
-    sendProblem(res, validated.problem);
+  const acquired = acquirePlacesLimit(req, res, rateLimiter);
+  if (!acquired) {
     return;
   }
 
   try {
-    const places = await services.placeExport.exportByGeometry(
-      validated.value.criteria,
-      validated.value.geometryType,
-      AbortSignal.timeout(OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000),
-    );
-    sendJson(res, 200, { places });
-  } catch (error) {
-    sendProblem(res, mapDomainError(error));
+    const body = await readJson(req, config.maxBodyBytes);
+    const validated = validatePlaceExportBody(body);
+    if (!validated.ok) {
+      sendProblem(res, validated.problem);
+      return;
+    }
+
+    try {
+      const places = await services.placeExport.exportByGeometry(
+        validated.value.criteria,
+        validated.value.geometryType,
+        AbortSignal.timeout(OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000),
+      );
+      sendJson(res, 200, { places });
+    } catch (error) {
+      sendProblem(res, mapDomainError(error));
+    }
+  } finally {
+    acquired.release();
   }
+}
+
+/**
+ * Acquires a places-expensive slot or writes 429/503 and returns null.
+ * @param req Incoming request.
+ * @param res Outgoing response.
+ * @param rateLimiter Shared limiter.
+ */
+function acquirePlacesLimit(
+  req: IncomingMessage,
+  res: ServerResponse,
+  rateLimiter: PlacesRateLimiter,
+): { release: () => void } | null {
+  const key = PlacesRateLimiter.placesExpensiveKey(clientIpFromRequest(req));
+  const result = rateLimiter.tryAcquire(key);
+  if (result.ok) {
+    return { release: result.release };
+  }
+
+  const headers = rateLimitHeaders(result.snapshot);
+  if (result.reason === "concurrency") {
+    sendProblem(
+      res,
+      problem(
+        503,
+        "Service unavailable",
+        "Too many concurrent Places queries from this client. Retry shortly.",
+        "/service-unavailable",
+      ),
+      headers,
+    );
+    return null;
+  }
+
+  sendProblem(
+    res,
+    problem(
+      429,
+      "Too many requests",
+      `Places query rate limit exceeded. Retry after about ${result.snapshot.retryAfterSec}s.`,
+      "/rate-limited",
+    ),
+    headers,
+  );
+  return null;
 }
 
 async function readJson(

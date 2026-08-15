@@ -1,3 +1,5 @@
+import type { PlacesRateLimitConfig } from "./http/rate-limit.js";
+
 /**
  * Loads API process configuration from environment variables.
  */
@@ -16,6 +18,8 @@ export interface ApiConfig {
   overpassEndpoints?: readonly string[];
   /** Listen port. */
   port: number;
+  /** Per-IP limits for `/places/search` and `/places/export`. */
+  rateLimit: PlacesRateLimitConfig;
 }
 
 /**
@@ -68,5 +72,43 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
         ? overpassEndpoints
         : undefined,
     port,
+    rateLimit: {
+      burst: readPositiveInt(
+        env.RATE_LIMIT_PLACES_BURST,
+        5,
+        "RATE_LIMIT_PLACES_BURST",
+      ),
+      maxConcurrent: readPositiveInt(
+        env.RATE_LIMIT_PLACES_MAX_CONCURRENT,
+        2,
+        "RATE_LIMIT_PLACES_MAX_CONCURRENT",
+      ),
+      refillPerMinute: readPositiveInt(
+        env.RATE_LIMIT_PLACES_REFILL_PER_MINUTE,
+        5,
+        "RATE_LIMIT_PLACES_REFILL_PER_MINUTE",
+      ),
+    },
   };
+}
+
+/**
+ * Parses a positive integer env var with a default.
+ * @param raw Env string or undefined.
+ * @param fallback Default when unset.
+ * @param name Variable name for errors.
+ */
+function readPositiveInt(
+  raw: string | undefined,
+  fallback: number,
+  name: string,
+): number {
+  if (raw === undefined || raw.trim() === "") {
+    return fallback;
+  }
+  const value = Number(raw);
+  if (!(Number.isFinite(value) && Number.isInteger(value)) || value <= 0) {
+    throw new Error(`${name} must be a positive integer.`);
+  }
+  return value;
 }

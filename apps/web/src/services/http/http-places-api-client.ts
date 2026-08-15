@@ -138,6 +138,27 @@ export class HttpPlacesApiClient
  * @param response Failed fetch response.
  */
 async function readApiErrorMessage(response: Response): Promise<string> {
+  if (response.status === 429) {
+    const retryAfter = response.headers.get("Retry-After");
+    const retrySeconds = retryAfter ? Number(retryAfter) : Number.NaN;
+    const retryHint =
+      Number.isFinite(retrySeconds) && retrySeconds > 0
+        ? ` Try again in about ${Math.ceil(retrySeconds)}s.`
+        : " Try again shortly.";
+    try {
+      const contentType = response.headers.get("Content-Type") ?? "";
+      if (contentType.includes("application/problem+json")) {
+        const problem = (await response.json()) as { detail?: string };
+        if (problem.detail) {
+          return problem.detail;
+        }
+      }
+    } catch {
+      // Fall through to status-based message.
+    }
+    return `Too many Places queries right now.${retryHint}`;
+  }
+
   try {
     const contentType = response.headers.get("Content-Type") ?? "";
     if (contentType.includes("application/problem+json")) {

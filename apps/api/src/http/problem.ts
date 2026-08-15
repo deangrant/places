@@ -46,12 +46,22 @@ export function problem(
  * Writes an `application/problem+json` response.
  * @param res Node response.
  * @param body Problem details.
+ * @param extraHeaders Optional headers (e.g. RateLimit-*).
  */
-export function sendProblem(res: ServerResponse, body: ProblemDetails): void {
+export function sendProblem(
+  res: ServerResponse,
+  body: ProblemDetails,
+  extraHeaders?: Record<string, string>,
+): void {
   const payload = JSON.stringify(body);
   res.statusCode = body.status;
   res.setHeader("Content-Type", "application/problem+json; charset=utf-8");
   res.setHeader("Content-Length", Buffer.byteLength(payload));
+  if (extraHeaders) {
+    for (const [name, value] of Object.entries(extraHeaders)) {
+      res.setHeader(name, value);
+    }
+  }
   res.end(payload);
 }
 

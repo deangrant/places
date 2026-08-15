@@ -59,7 +59,7 @@ Conflict rule: HTTP/BFF contract rules come from this skill; TypeScript module d
 | `apps/api` | **Must** use Node builtins (`node:http`, `node:url`, `fetch`, `AbortSignal`, etc.) |
 | Web HTTP adapters | **Must** use existing `fetch`; **must not** add axios/ky/openapi clients |
 | Validation | Type guards / allowlists — **must not** add zod/valibot/yup |
-| Rate limiting | **Must not** implement in this pass (see §13) |
+| Rate limiting | In-process token bucket with Node builtins only (see §13) |
 
 **Absolutely necessary bar:** add a third-party package only if a builtin cannot
 meet a hard requirement (for example platform crypto) and document why in the
@@ -182,20 +182,28 @@ Do not add new test/build frameworks for the split.
 
 - Secrets and contact identity **must** come from env (see [reference.md](reference.md)).
 - **Must** scrub logs of tokens and full query dumps when not needed for debug.
-- Enforce body size caps and CORS allowlists.
+- Enforce body size caps, CORS allowlists, and Places route rate limits (§13).
 - Authn/authz **must not** be inventented in this pass; document as deferred.
 - When publicly hosted, TLS/HSTS **should** be terminated at the edge (for
-  example Cloudflare).
+  example Cloudflare). CORS **must not** be treated as authorization.
 
 ---
 
-## 13. Deferred (rate limiting — later pass)
+## 13. Rate limiting (required for public hosting)
 
-- **Must not** implement per-IP token buckets, 429 quotas, or `RateLimit-*`
-  headers on `apps/api` in this pass.
-- When traffic or OSM etiquette requires it, follow `api-rate-limiting` guidance:
-  per-IP (and tighter on search/export), **429** vs **503**, `Retry-After`,
-  `RateLimit-*`.
+- **Must** apply an in-process per-IP token bucket on `POST /places/search` and
+  `POST /places/export` (Node builtins only; no third-party limiter package).
+- **Must** also cap per-IP concurrent expensive requests (defense against
+  parallel ~180s Overpass calls).
+- Client over quota → **429** + `Retry-After` + `RateLimit-*`.
+- Concurrent overload for that client → **503** + `Retry-After`.
+- Health probes **must** remain unlimited.
+- Key identity **must** use `socket.remoteAddress` (normalize IPv4-mapped IPv6).
+  **Must not** trust `X-Forwarded-For` until an explicit trusted-proxy mode exists.
+- In-memory limits are per process; multi-instance fleets **should** add edge or
+  shared-store limits later. Edge (Cloudflare) limits remain recommended
+  defense-in-depth when publicly hosted.
+- Follow `api-rate-limiting` conventions for headers and 429 vs 503.
 
 ---
 
@@ -209,6 +217,6 @@ Do not add new test/build frameworks for the split.
 - [ ] Validation returns 400/413/422 appropriately?
 - [ ] Nominatim `User-Agent` + contact email from env?
 - [ ] Outbound timeouts + bounded Overpass failover?
-- [ ] No API rate-limiting middleware in this pass?
+- [ ] Per-IP rate limit + concurrency cap on search/export with 429/503 headers?
 - [ ] Handlers separable for a future CF/Containers adapter?
 - [ ] SOLID + JSDoc + project-structure skills followed on changed TypeScript?
