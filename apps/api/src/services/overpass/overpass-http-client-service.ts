@@ -4,6 +4,8 @@ import {
   OVERPASS_CLIENT_TIMEOUT_SECONDS,
   OVERPASS_ENDPOINTS,
   OVERPASS_MAX_ENDPOINT_ATTEMPTS,
+  OVERPASS_RETRY_BASE_MS,
+  OVERPASS_RETRY_MAX_MS,
   OVERPASS_TIMEOUT_SECONDS,
 } from "places-core";
 import { OverpassError } from "./overpass-error.js";
@@ -56,6 +58,12 @@ export interface IOverpassClient {
 /** Fetch-compatible function used by the Overpass HTTP client. */
 export type OverpassFetch = typeof fetch;
 
+/** Abort-aware delay used between interpreter failover attempts. */
+export type OverpassSleep = (ms: number, signal?: AbortSignal) => Promise<void>;
+
+/** Unit interval random source for backoff jitter. */
+export type OverpassRandom = () => number;
+
 /**
  * Default fetch that keeps the correct `globalThis` receiver.
  * Storing unbound `fetch` and calling it later throws Illegal invocation in browsers.
@@ -72,6 +80,8 @@ export class OverpassHttpClient implements IOverpassClient {
   private readonly shuffle: (endpoints: readonly string[]) => string[];
   private readonly fetchImpl: OverpassFetch;
   private readonly userAgent: string | undefined;
+  private readonly sleep: OverpassSleep;
+  private readonly random: OverpassRandom;
 
   /**
    * @param endpoints Interpreter URLs (shuffled per query unless overridden).
@@ -79,6 +89,8 @@ export class OverpassHttpClient implements IOverpassClient {
    * @param shuffle Endpoint orderer; defaults to Fisher–Yates shuffle.
    * @param fetchImpl HTTP fetch implementation; defaults to globalThis.fetch.
    * @param userAgent Identifying User-Agent for public Overpass mirrors.
+   * @param sleep Delay between failover attempts; defaults to abort-aware sleep.
+   * @param random Unit interval RNG for backoff jitter; defaults to Math.random.
    */
   constructor(
     endpoints: readonly string[] = OVERPASS_ENDPOINTS,
@@ -86,18 +98,22 @@ export class OverpassHttpClient implements IOverpassClient {
     shuffle: (endpoints: readonly string[]) => string[] = shuffleEndpoints,
     fetchImpl: OverpassFetch = defaultOverpassFetch,
     userAgent?: string,
+    sleep: OverpassSleep = sleepWithAbort,
+    random: OverpassRandom = Math.random,
   ) {
     this.endpoints = endpoints;
     this.timeoutMs = timeoutMs;
     this.shuffle = shuffle;
     this.fetchImpl = fetchImpl;
     this.userAgent = userAgent?.trim() || undefined;
+    this.sleep = sleep;
+    this.random = random;
   }
 
   /**
    * Executes an Overpass QL query with shuffled failover across interpreters.
    * @param query Complete Overpass QL script.
-   * @param signal Optional abort signal for cancellation.
+   * @param signal Optional caller abort signal.
    * @param onAttempt Optional per-endpoint progress callback.
    */
   query(
@@ -155,6 +171,16 @@ export class OverpassHttpClient implements IOverpassClient {
     if (outcome.kind === "fatal") {
       throw outcome.error;
     }
+
+    if (index + 1 >= order.length) {
+      throw outcome.error;
+    }
+
+    // Space failover attempts so 429 / transient bursts do not hammer the next mirror.
+    if (signal?.aborted) {
+      throw abortError(signal);
+    }
+    await this.sleep(computeOverpassRetryDelayMs(index, this.random), signal);
 
     return this.queryInOrder(
       order,
@@ -279,6 +305,23 @@ type OverpassAttemptOutcome =
   | { kind: "success"; response: OverpassResponse }
   | { kind: "retry"; error: OverpassError }
   | { kind: "fatal"; error: unknown };
+
+/**
+ * Delay before the next interpreter after a retryable failure.
+ * @param retryIndex Zero-based failed attempt index (0 before 2nd try).
+ * @param random Unit interval RNG for jitter; defaults to Math.random.
+ */
+export function computeOverpassRetryDelayMs(
+  retryIndex: number,
+  random: OverpassRandom = Math.random,
+): number {
+  const exponential = Math.min(
+    OVERPASS_RETRY_MAX_MS,
+    OVERPASS_RETRY_BASE_MS * 2 ** retryIndex,
+  );
+  const jitter = Math.floor(random() * OVERPASS_RETRY_BASE_MS);
+  return exponential + jitter;
+}
 
 /**
  * True when the failure should advance to the next interpreter.
@@ -420,4 +463,44 @@ function createTimeoutSignal(timeoutMs: number): {
     },
     signal: controller.signal,
   };
+}
+
+/**
+ * Resolves after `ms`, or rejects early when `signal` aborts.
+ * @param ms Delay in milliseconds.
+ * @param signal Optional abort signal.
+ */
+export async function sleepWithAbort(
+  ms: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (ms <= 0) {
+    return;
+  }
+  if (signal?.aborted) {
+    throw abortError(signal);
+  }
+  await new Promise<void>((resolve, reject) => {
+    const timerId = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    function onAbort() {
+      clearTimeout(timerId);
+      signal?.removeEventListener("abort", onAbort);
+      reject(abortError(signal));
+    }
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+/**
+ * Prefer `signal.reason` when present; otherwise a standard AbortError.
+ * @param signal Aborted signal, or undefined when reason is unknown.
+ */
+function abortError(signal?: AbortSignal): unknown {
+  if (signal?.reason !== undefined) {
+    return signal.reason;
+  }
+  return new DOMException("The operation was aborted.", "AbortError");
 }

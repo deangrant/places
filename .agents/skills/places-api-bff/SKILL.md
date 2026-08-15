@@ -155,6 +155,9 @@ Do not add new test/build frameworks for the split.
   so soft-timeout failover can run before the shared caller signal expires.
 - Retry **only** transient failures (for example 406/408/429/502/503/504,
   network blips). Use exponential backoff with jitter when retrying.
+- Failover waits use bounded exponential backoff (`OVERPASS_RETRY_BASE_MS` /
+  `OVERPASS_RETRY_MAX_MS`) plus jitter and **must** respect the caller abort
+  signal so disconnects do not start the next interpreter.
 - **Must not** amplify load with unbounded retries against public OSM endpoints.
 - Long Overpass timeout **must not** mean infinite retries.
 

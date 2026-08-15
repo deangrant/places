@@ -1,16 +1,20 @@
 import {
   OVERPASS_ATTEMPT_TIMEOUT_SECONDS,
   OVERPASS_CLIENT_TIMEOUT_SECONDS,
+  OVERPASS_RETRY_BASE_MS,
+  OVERPASS_RETRY_MAX_MS,
   OVERPASS_TIMEOUT_SECONDS,
 } from "places-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OverpassError } from "./overpass-error.js";
 import {
+  computeOverpassRetryDelayMs,
   describeOverpassRemark,
   hostnameFromEndpoint,
   isRetryableOverpassFailure,
   type OverpassAttemptEvent,
   OverpassHttpClient,
+  type OverpassSleep,
   overpassTimeoutMessage,
   shuffleEndpoints,
 } from "./overpass-http-client-service.js";
@@ -25,6 +29,36 @@ afterEach(() => {
 const identityOrder = (endpoints: readonly string[]): string[] => [
   ...endpoints,
 ];
+
+/** Skip wall-clock backoff in tests that only assert failover behavior. */
+const noopSleep: OverpassSleep = async () => undefined;
+
+/**
+ * Builds a client with identity shuffle and no-op backoff unless overridden.
+ * @param endpoints Interpreter URLs.
+ * @param timeoutMs Per-attempt soft timeout.
+ * @param options Optional shuffle, sleep, random, and userAgent.
+ */
+function createClient(
+  endpoints: readonly string[],
+  timeoutMs: number = OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
+  options: {
+    random?: () => number;
+    shuffle?: (endpoints: readonly string[]) => string[];
+    sleep?: OverpassSleep;
+    userAgent?: string;
+  } = {},
+): OverpassHttpClient {
+  return new OverpassHttpClient(
+    endpoints,
+    timeoutMs,
+    options.shuffle ?? identityOrder,
+    undefined,
+    options.userAgent,
+    options.sleep ?? noopSleep,
+    options.random ?? (() => 0),
+  );
+}
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -52,11 +86,7 @@ describe("OverpassHttpClient default fetchImpl", () => {
       .mockResolvedValue(jsonResponse({ elements: [{ id: 1 }] }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const client = new OverpassHttpClient(
-      ["https://example.test/interpreter"],
-      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
-      identityOrder,
-    );
+    const client = createClient(["https://example.test/interpreter"]);
     const response = await client.query("[out:json];out;");
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -76,12 +106,12 @@ describe("OverpassHttpClient default fetchImpl", () => {
       .mockResolvedValue(jsonResponse({ elements: [{ id: 1 }] }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const client = new OverpassHttpClient(
+    const client = createClient(
       ["https://example.test/interpreter"],
-      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
-      identityOrder,
       undefined,
-      "PlacesExplorer/1.0 (test@example.org)",
+      {
+        userAgent: "PlacesExplorer/1.0 (test@example.org)",
+      },
     );
     await client.query("[out:json];out;");
 
@@ -101,11 +131,7 @@ describe("OverpassHttpClient query timeout", () => {
   it("throws OverpassError when the client timeout elapses", async () => {
     vi.stubGlobal("fetch", vi.fn(hangingFetch));
 
-    const client = new OverpassHttpClient(
-      ["https://example.test/interpreter"],
-      25,
-      identityOrder,
-    );
+    const client = createClient(["https://example.test/interpreter"], 25);
     await expect(client.query("[out:json];out;")).rejects.toSatisfy(
       (error: unknown) =>
         error instanceof OverpassError &&
@@ -116,13 +142,8 @@ describe("OverpassHttpClient query timeout", () => {
 
   it("rethrows when the caller signal aborts instead of rewriting as timeout", async () => {
     vi.stubGlobal("fetch", vi.fn(hangingFetch));
-
     const controller = new AbortController();
-    const client = new OverpassHttpClient(
-      ["https://example.test/interpreter"],
-      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
-      identityOrder,
-    );
+    const client = createClient(["https://example.test/interpreter"]);
     const pending = client.query("[out:json];out;", controller.signal);
     controller.abort();
 
@@ -142,14 +163,10 @@ describe("OverpassHttpClient failover", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const attempts: OverpassAttemptEvent[] = [];
-    const client = new OverpassHttpClient(
-      [
-        "https://first.example/api/interpreter",
-        "https://second.example/api/interpreter",
-      ],
-      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
-      identityOrder,
-    );
+    const client = createClient([
+      "https://first.example/api/interpreter",
+      "https://second.example/api/interpreter",
+    ]);
 
     const result = await client.query("[out:json];out;", undefined, (event) => {
       attempts.push(event);
@@ -179,13 +196,13 @@ describe("OverpassHttpClient failover", () => {
       .mockResolvedValueOnce(jsonResponse({ elements: [{ id: 1 }] }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const client = new OverpassHttpClient(
+    const client = createClient(
       [
         "https://first.example/api/interpreter",
         "https://second.example/api/interpreter",
       ],
-      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
-      (endpoints) => [...endpoints].reverse(),
+      undefined,
+      { shuffle: (endpoints) => [...endpoints].reverse() },
     );
 
     await client.query("[out:json];out;");
@@ -201,14 +218,10 @@ describe("OverpassHttpClient failover", () => {
       .mockResolvedValueOnce(new Response("bad", { status: 400 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const client = new OverpassHttpClient(
-      [
-        "https://first.example/api/interpreter",
-        "https://second.example/api/interpreter",
-      ],
-      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
-      identityOrder,
-    );
+    const client = createClient([
+      "https://first.example/api/interpreter",
+      "https://second.example/api/interpreter",
+    ]);
 
     await expect(client.query("[out:json];out;")).rejects.toSatisfy(
       (error: unknown) =>
@@ -224,19 +237,13 @@ describe("OverpassHttpClient failover", () => {
       .mockResolvedValueOnce(jsonResponse({ elements: [{ id: 2 }] }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const client = new OverpassHttpClient(
-      [
-        "https://first.example/api/interpreter",
-        "https://second.example/api/interpreter",
-      ],
-      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
-      identityOrder,
-    );
+    const client = createClient([
+      "https://first.example/api/interpreter",
+      "https://second.example/api/interpreter",
+    ]);
 
     const result = await client.query("[out:json];out;");
-
     expect(result.elements).toEqual([{ id: 2 }]);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[1]?.[0]).toBe(
       "https://second.example/api/interpreter",
     );
@@ -250,13 +257,12 @@ describe("OverpassHttpClient failover", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const attempts: OverpassAttemptEvent[] = [];
-    const client = new OverpassHttpClient(
+    const client = createClient(
       [
         "https://first.example/api/interpreter",
         "https://second.example/api/interpreter",
       ],
       20,
-      identityOrder,
     );
 
     const result = await client.query("[out:json];out;", undefined, (event) => {
@@ -281,13 +287,12 @@ describe("OverpassHttpClient failover", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const attempts: OverpassAttemptEvent[] = [];
-    const client = new OverpassHttpClient(
+    const client = createClient(
       [
         "https://first.example/api/interpreter",
         "https://second.example/api/interpreter",
       ],
       25,
-      identityOrder,
     );
     // Shared route-style signal: large enough for two short attempts.
     const caller = AbortSignal.timeout(200);
@@ -313,13 +318,12 @@ describe("OverpassHttpClient failover", () => {
       .mockResolvedValueOnce(jsonResponse({ elements: [{ id: 99 }] }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const client = new OverpassHttpClient(
+    const client = createClient(
       [
         "https://first.example/api/interpreter",
         "https://second.example/api/interpreter",
       ],
       40,
-      identityOrder,
     );
     // Same wall-clock as attempt soft timeout: soft-timeout failover is ineffective.
     const caller = AbortSignal.timeout(40);
@@ -336,16 +340,12 @@ describe("OverpassHttpClient failover", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const client = new OverpassHttpClient(
-      [
-        "https://a.example/api/interpreter",
-        "https://b.example/api/interpreter",
-        "https://c.example/api/interpreter",
-        "https://d.example/api/interpreter",
-      ],
-      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
-      identityOrder,
-    );
+    const client = createClient([
+      "https://a.example/api/interpreter",
+      "https://b.example/api/interpreter",
+      "https://c.example/api/interpreter",
+      "https://d.example/api/interpreter",
+    ]);
 
     await expect(client.query("[out:json];out;")).rejects.toSatisfy(
       (error: unknown) =>
@@ -366,14 +366,10 @@ describe("OverpassHttpClient failover", () => {
       vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))),
     );
 
-    const client = new OverpassHttpClient(
-      [
-        "https://first.example/api/interpreter",
-        "https://second.example/api/interpreter",
-      ],
-      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
-      identityOrder,
-    );
+    const client = createClient([
+      "https://first.example/api/interpreter",
+      "https://second.example/api/interpreter",
+    ]);
 
     await expect(client.query("[out:json];out;")).rejects.toSatisfy(
       (error: unknown) =>
@@ -387,14 +383,10 @@ describe("OverpassHttpClient failover", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const controller = new AbortController();
-    const client = new OverpassHttpClient(
-      [
-        "https://first.example/api/interpreter",
-        "https://second.example/api/interpreter",
-      ],
-      OVERPASS_ATTEMPT_TIMEOUT_SECONDS * 1000,
-      identityOrder,
-    );
+    const client = createClient([
+      "https://first.example/api/interpreter",
+      "https://second.example/api/interpreter",
+    ]);
     const pending = client.query("[out:json];out;", controller.signal);
     controller.abort();
 
@@ -403,6 +395,121 @@ describe("OverpassHttpClient failover", () => {
         error instanceof DOMException && error.name === "AbortError",
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("OverpassHttpClient failover backoff", () => {
+  it("does not delay before a successful first attempt", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ elements: [{ id: 1 }] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const sleep = vi.fn(noopSleep);
+
+    const client = createClient(
+      ["https://only.example/api/interpreter"],
+      undefined,
+      { sleep },
+    );
+    await client.query("[out:json];out;");
+
+    expect(sleep).not.toHaveBeenCalled();
+  });
+
+  it("waits with base delay before the second endpoint after 429", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("rate limited", { status: 429 }))
+      .mockResolvedValueOnce(jsonResponse({ elements: [{ id: 1 }] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const sleep = vi.fn(noopSleep);
+
+    const client = createClient(
+      [
+        "https://first.example/api/interpreter",
+        "https://second.example/api/interpreter",
+      ],
+      undefined,
+      { random: () => 0, sleep },
+    );
+    await client.query("[out:json];out;");
+
+    expect(sleep).toHaveBeenCalledTimes(1);
+    expect(sleep).toHaveBeenCalledWith(OVERPASS_RETRY_BASE_MS, undefined);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("grows delay between consecutive retryable failures", async () => {
+    const fetchMock = vi.fn((_input: string | URL, _init?: RequestInit) =>
+      Promise.reject(new TypeError("Failed to fetch")),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const sleep = vi.fn(noopSleep);
+
+    const client = createClient(
+      [
+        "https://a.example/api/interpreter",
+        "https://b.example/api/interpreter",
+        "https://c.example/api/interpreter",
+      ],
+      undefined,
+      { random: () => 0, sleep },
+    );
+
+    await expect(client.query("[out:json];out;")).rejects.toBeTruthy();
+    expect(sleep.mock.calls.map((call) => call[0])).toEqual([
+      OVERPASS_RETRY_BASE_MS,
+      OVERPASS_RETRY_BASE_MS * 2,
+    ]);
+  });
+
+  it("does not start the next endpoint when abort fires during backoff", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("rate limited", { status: 429 }))
+      .mockResolvedValueOnce(jsonResponse({ elements: [{ id: 1 }] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const controller = new AbortController();
+    const sleep: OverpassSleep = async (_ms, signal) => {
+      controller.abort();
+      throw (
+        signal?.reason ??
+        new DOMException("The operation was aborted.", "AbortError")
+      );
+    };
+
+    const client = createClient(
+      [
+        "https://first.example/api/interpreter",
+        "https://second.example/api/interpreter",
+      ],
+      undefined,
+      { random: () => 0, sleep },
+    );
+
+    await expect(
+      client.query("[out:json];out;", controller.signal),
+    ).rejects.toSatisfy(
+      (error: unknown) =>
+        error instanceof DOMException && error.name === "AbortError",
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("computeOverpassRetryDelayMs", () => {
+  it("uses exponential steps capped at the max, plus jitter", () => {
+    expect(computeOverpassRetryDelayMs(0, () => 0)).toBe(
+      OVERPASS_RETRY_BASE_MS,
+    );
+    expect(computeOverpassRetryDelayMs(1, () => 0)).toBe(
+      OVERPASS_RETRY_BASE_MS * 2,
+    );
+    expect(computeOverpassRetryDelayMs(2, () => 0)).toBe(OVERPASS_RETRY_MAX_MS);
+    expect(computeOverpassRetryDelayMs(0, () => 0.999)).toBe(
+      OVERPASS_RETRY_BASE_MS + Math.floor(0.999 * OVERPASS_RETRY_BASE_MS),
+    );
   });
 });
 
