@@ -147,7 +147,14 @@ describe("ExportGeometryModal", () => {
 
   it("exports the last selected geometry type when switching tiles", async () => {
     const { onExported, placeExport } = renderModal();
-    vi.mocked(placeExport.exportByGeometry).mockResolvedValueOnce([]);
+    const polygonPlace: Place = {
+      ...place,
+      geometryType: "POLYGON",
+      id: "way/1",
+    };
+    vi.mocked(placeExport.exportByGeometry).mockResolvedValueOnce([
+      polygonPlace,
+    ]);
 
     fireEvent.click(screen.getByRole("button", { name: "POINT" }));
     fireEvent.click(screen.getByRole("button", { name: "POLYGON" }));
@@ -162,7 +169,27 @@ describe("ExportGeometryModal", () => {
       expect.any(AbortSignal),
       expect.any(Function),
     );
-    expect(downloadPlacesCsv).toHaveBeenCalledWith([]);
+    expect(downloadPlacesCsv).toHaveBeenCalledWith([polygonPlace]);
+  });
+
+  it("shows an error and keeps the modal open when no places match", async () => {
+    const { onClose, onExported, placeExport } = renderModal();
+    vi.mocked(placeExport.exportByGeometry).mockResolvedValueOnce([]);
+
+    fireEvent.click(screen.getByRole("button", { name: "POINT" }));
+    fireEvent.click(screen.getByRole("button", { name: EXPORT_BUTTON }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "No places matched this geometry. Try a different type.",
+        ),
+      ).toBeInTheDocument();
+    });
+    expect(downloadPlacesCsv).not.toHaveBeenCalled();
+    expect(onExported).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "Export places" })).toBeVisible();
   });
 
   it("cancels an in-flight export from the overlay and restores the picker", async () => {

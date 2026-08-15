@@ -127,6 +127,10 @@ export function useExportPlacesByGeometry({
         },
       )
         .then((prepared) => {
+          if (prepared.length === 0) {
+            setError("No places matched this geometry. Try a different type.");
+            return;
+          }
           downloadPlacesCsv(prepared);
           onExported?.(geometryType);
           onClose();
