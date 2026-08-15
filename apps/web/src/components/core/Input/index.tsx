@@ -8,6 +8,7 @@ export function Input({
   value,
   placeholder,
   disabled,
+  onBlur,
   onChange,
   onKeyDown,
   type = "text",
@@ -39,6 +40,7 @@ export function Input({
       disabled={disabled}
       id={id}
       list={list}
+      onBlur={onBlur}
       onChange={handleChange}
       onKeyDown={onKeyDown}
       placeholder={placeholder}

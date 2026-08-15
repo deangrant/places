@@ -100,6 +100,7 @@ export function Autocomplete({
         aria-expanded={menuOpen}
         disabled={disabled}
         id={id}
+        onBlur={closeMenu}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}

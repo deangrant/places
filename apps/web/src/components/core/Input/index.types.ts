@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from "react";
+import type { FocusEventHandler, KeyboardEvent } from "react";
 
 /**
  * Props for the shared text Input core control.
@@ -22,6 +22,8 @@ export interface InputProps {
   id?: string;
   /** Optional datalist id for native suggestions. */
   list?: string;
+  /** Optional blur handler (e.g. close a combobox listbox). */
+  onBlur?: FocusEventHandler<HTMLInputElement>;
   /** Called when the typed value changes. */
   onChange: (value: string) => void;
   /** Optional keydown handler (e.g. Enter to search). */
