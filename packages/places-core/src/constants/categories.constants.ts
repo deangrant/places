@@ -1030,27 +1030,3 @@ export const CATEGORY_DEFINITIONS: CategoryDefinition[] = [
     topCategory: "Tourism",
   },
 ];
-
-/** Curated ISO 3166-1 alpha-2 countries for the Places country filter UI (not a full ISO set). */
-export const COUNTRY_OPTIONS: { code: string; name: string }[] = [
-  { code: "US", name: "United States" },
-  { code: "CA", name: "Canada" },
-  { code: "GB", name: "United Kingdom" },
-  { code: "DE", name: "Germany" },
-  { code: "FR", name: "France" },
-  { code: "AU", name: "Australia" },
-  { code: "NL", name: "Netherlands" },
-  { code: "ES", name: "Spain" },
-  { code: "IT", name: "Italy" },
-  { code: "JP", name: "Japan" },
-  { code: "BR", name: "Brazil" },
-  { code: "MX", name: "Mexico" },
-  { code: "IN", name: "India" },
-  { code: "SE", name: "Sweden" },
-  { code: "NO", name: "Norway" },
-  { code: "PL", name: "Poland" },
-  { code: "IE", name: "Ireland" },
-  { code: "NZ", name: "New Zealand" },
-  { code: "CH", name: "Switzerland" },
-  { code: "AT", name: "Austria" },
-];

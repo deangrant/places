@@ -59,7 +59,7 @@ export function PrimaryFiltersRow({
       </FormField>
 
       <FormField htmlFor="country" label="Country">
-        <div title="Curated country list — not every ISO code.">
+        <div title="ISO country or territory code for Nominatim scope.">
           <Select
             clearable
             clearLabel="Clear country"
@@ -67,6 +67,8 @@ export function PrimaryFiltersRow({
             onChange={onCountryChange}
             options={countryOptions}
             placeholder="Any country"
+            searchable
+            searchPlaceholder="Filter countries…"
             value={countryCode}
           />
         </div>

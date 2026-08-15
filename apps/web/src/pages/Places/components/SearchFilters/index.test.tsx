@@ -219,15 +219,15 @@ describe("SearchFilters", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("keeps brand and country limitation copy as titles", () => {
-    renderFilters();
-    expect(screen.getByTitle("Exact OSM brand match.")).toBeInTheDocument();
-    expect(
-      screen.getByTitle("Curated country list — not every ISO code."),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText("Exact OSM brand match."),
-    ).not.toBeInTheDocument();
+  it("filters the country list by typing then selects a match", () => {
+    const { getCriteria } = renderFilters();
+    fireEvent.click(screen.getByLabelText("Country"));
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Filter countries…" }),
+      { target: { value: "singapore" } },
+    );
+    fireEvent.click(screen.getByRole("option", { name: "Singapore" }));
+    expect(getCriteria().countryCode).toBe("SG");
   });
 
   it("disables Reset when pristine and clears all filters when pressed", () => {

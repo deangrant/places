@@ -30,6 +30,13 @@ export interface SelectProps {
   options: SelectOption[];
   /** Empty-value placeholder option label. */
   placeholder?: string;
+  /**
+   * When true, shows a sticky filter field in the open panel and matches
+   * options by label or value substring.
+   */
+  searchable?: boolean;
+  /** Placeholder for the filter field when `searchable`; defaults to `"Filter…"`. */
+  searchPlaceholder?: string;
   /** Controlled selected value. */
   value: string;
 }

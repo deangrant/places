@@ -1,7 +1,5 @@
-export {
-  CATEGORY_DEFINITIONS,
-  COUNTRY_OPTIONS,
-} from "./constants/categories.constants.js";
+export { CATEGORY_DEFINITIONS } from "./constants/categories.constants.js";
+export { COUNTRY_OPTIONS } from "./constants/countries.constants.js";
 export {
   isAllowedOsmTagKey,
   OSM_TAG_KEY_ALLOWLIST,

@@ -18,12 +18,14 @@ function ControlledSelect({
   disabled,
   initial = "",
   onChange = vi.fn(),
+  searchable,
 }: {
   clearable?: boolean;
   clearLabel?: string;
   disabled?: boolean;
   initial?: string;
   onChange?: (value: string) => void;
+  searchable?: boolean;
 }) {
   const [value, setValue] = useState(initial);
   const handleChange = useCallback(
@@ -43,6 +45,7 @@ function ControlledSelect({
       onChange={handleChange}
       options={OPTIONS}
       placeholder="Pick one"
+      searchable={searchable}
       value={value}
     />
   );
@@ -136,5 +139,58 @@ describe("Select", () => {
     expect(
       screen.queryByRole("button", { name: "Clear country" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("filters options by label when searchable", () => {
+    render(<ControlledSelect searchable />);
+    fireEvent.click(screen.getByRole("combobox", { name: "Demo select" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Filter…" }), {
+      target: { value: "bet" },
+    });
+    expect(screen.getByRole("option", { name: "Beta" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "Alpha" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("filters options by value when searchable", () => {
+    function CodeSelect() {
+      const [value, setValue] = useState("");
+      return (
+        <Select
+          aria-label="Demo select"
+          id="demo-code"
+          onChange={setValue}
+          options={[
+            { label: "South Africa", value: "ZA" },
+            { label: "United States", value: "US" },
+          ]}
+          placeholder="Pick one"
+          searchable
+          value={value}
+        />
+      );
+    }
+    render(<CodeSelect />);
+    fireEvent.click(screen.getByRole("combobox", { name: "Demo select" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Filter…" }), {
+      target: { value: "za" },
+    });
+    expect(
+      screen.getByRole("option", { name: "South Africa" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "United States" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows an empty state when nothing matches", () => {
+    render(<ControlledSelect searchable />);
+    fireEvent.click(screen.getByRole("combobox", { name: "Demo select" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Filter…" }), {
+      target: { value: "zzz" },
+    });
+    expect(screen.getByText("No matches")).toBeInTheDocument();
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
   });
 });
