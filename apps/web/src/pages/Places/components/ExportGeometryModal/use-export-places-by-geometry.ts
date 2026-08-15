@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { OVERPASS_CLIENT_TIMEOUT_SECONDS } from "@/constants/api.constants";
-import { mergeOverpassAttempt } from "@/pages/Places/utils/merge-overpass-attempt";
 import { preparePlacesForGeometryExport } from "@/services/export/export-places-by-geometry";
 import { downloadPlacesCsv } from "@/services/export/places-csv-export";
+import { mergeOverpassAttempt } from "@/services/overpass/merge-overpass-attempt";
 import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client";
 import type { IPlaceGeometryExporter } from "@/services/places/place-search-service";
 import type {

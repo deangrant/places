@@ -3,7 +3,6 @@ import {
   OVERPASS_CLIENT_TIMEOUT_SECONDS,
   OVERPASS_TIMEOUT_SECONDS,
 } from "@/constants/api.constants";
-import { mergeOverpassAttempt } from "@/pages/Places/utils/merge-overpass-attempt";
 import {
   hostnameFromEndpoint,
   isRetryableOverpassFailure,
@@ -302,20 +301,6 @@ describe("overpass helpers", () => {
         new OverpassError("timeout", { timedOut: true }),
       ),
     ).toBe(true);
-  });
-
-  it("merges attempt events by index", () => {
-    const started: OverpassAttemptEvent = {
-      endpoint: "https://a.example/api/interpreter",
-      hostname: "a.example",
-      index: 0,
-      status: "started",
-    };
-    const failed: OverpassAttemptEvent = {
-      ...started,
-      status: "failed",
-    };
-    expect(mergeOverpassAttempt([started], failed)).toEqual([failed]);
   });
 
   it("shuffleEndpoints returns the same members without mutating input", () => {

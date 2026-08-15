@@ -1,4 +1,4 @@
-import { mergeOverpassAttempt } from "@/pages/Places/utils/merge-overpass-attempt";
+import { mergeOverpassAttempt } from "@/services/overpass/merge-overpass-attempt";
 import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client";
 import type { BBox, Place } from "@/types/places.types";
 
