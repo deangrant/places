@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { OVERPASS_TIMEOUT_SECONDS } from "@/constants/api.constants";
+import {
+  OVERPASS_CLIENT_TIMEOUT_SECONDS,
+  OVERPASS_TIMEOUT_SECONDS,
+} from "@/constants/api.constants";
 import { mergeOverpassAttempt } from "@/pages/Places/utils/merge-overpass-attempt";
 import {
   hostnameFromEndpoint,
@@ -29,25 +32,21 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+function hangingFetch(_url: string, init?: RequestInit): Promise<Response> {
+  return new Promise<Response>((_resolve, reject) => {
+    init?.signal?.addEventListener(
+      "abort",
+      () => {
+        reject(new DOMException("The operation was aborted.", "AbortError"));
+      },
+      { once: true },
+    );
+  });
+}
+
 describe("OverpassHttpClient query timeout", () => {
   it("throws OverpassError when the client timeout elapses", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        (_url: string, init?: RequestInit) =>
-          new Promise<Response>((_resolve, reject) => {
-            init?.signal?.addEventListener(
-              "abort",
-              () => {
-                reject(
-                  new DOMException("The operation was aborted.", "AbortError"),
-                );
-              },
-              { once: true },
-            );
-          }),
-      ),
-    );
+    vi.stubGlobal("fetch", vi.fn(hangingFetch));
 
     const client = new OverpassHttpClient(
       ["https://example.test/interpreter"],
@@ -63,28 +62,12 @@ describe("OverpassHttpClient query timeout", () => {
   });
 
   it("rethrows when the caller signal aborts instead of rewriting as timeout", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        (_url: string, init?: RequestInit) =>
-          new Promise<Response>((_resolve, reject) => {
-            init?.signal?.addEventListener(
-              "abort",
-              () => {
-                reject(
-                  new DOMException("The operation was aborted.", "AbortError"),
-                );
-              },
-              { once: true },
-            );
-          }),
-      ),
-    );
+    vi.stubGlobal("fetch", vi.fn(hangingFetch));
 
     const controller = new AbortController();
     const client = new OverpassHttpClient(
       ["https://example.test/interpreter"],
-      OVERPASS_TIMEOUT_SECONDS * 1000,
+      OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
       identityOrder,
     );
     const pending = client.query("[out:json];out;", controller.signal);
@@ -111,7 +94,7 @@ describe("OverpassHttpClient failover", () => {
         "https://first.example/api/interpreter",
         "https://second.example/api/interpreter",
       ],
-      OVERPASS_TIMEOUT_SECONDS * 1000,
+      OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
       identityOrder,
     );
 
@@ -148,7 +131,7 @@ describe("OverpassHttpClient failover", () => {
         "https://first.example/api/interpreter",
         "https://second.example/api/interpreter",
       ],
-      OVERPASS_TIMEOUT_SECONDS * 1000,
+      OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
       (endpoints) => [...endpoints].reverse(),
     );
 
@@ -170,7 +153,7 @@ describe("OverpassHttpClient failover", () => {
         "https://first.example/api/interpreter",
         "https://second.example/api/interpreter",
       ],
-      OVERPASS_TIMEOUT_SECONDS * 1000,
+      OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
       identityOrder,
     );
 
@@ -181,21 +164,11 @@ describe("OverpassHttpClient failover", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("does not try further endpoints after client timeout", async () => {
-    const fetchMock = vi.fn(
-      (_url: string, init?: RequestInit) =>
-        new Promise<Response>((_resolve, reject) => {
-          init?.signal?.addEventListener(
-            "abort",
-            () => {
-              reject(
-                new DOMException("The operation was aborted.", "AbortError"),
-              );
-            },
-            { once: true },
-          );
-        }),
-    );
+  it("tries the next endpoint after client timeout", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(hangingFetch)
+      .mockResolvedValueOnce(jsonResponse({ elements: [{ id: 1 }] }));
     vi.stubGlobal("fetch", fetchMock);
 
     const attempts: OverpassAttemptEvent[] = [];
@@ -208,17 +181,47 @@ describe("OverpassHttpClient failover", () => {
       identityOrder,
     );
 
-    await expect(
-      client.query("[out:json];out;", undefined, (event) => {
-        attempts.push(event);
-      }),
-    ).rejects.toSatisfy(
-      (error: unknown) => error instanceof OverpassError && error.timedOut,
-    );
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const result = await client.query("[out:json];out;", undefined, (event) => {
+      attempts.push(event);
+    });
+
+    expect(result.elements).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(attempts.map((entry) => entry.status)).toEqual([
       "started",
       "timed_out",
+      "started",
+      "succeeded",
+    ]);
+  });
+
+  it("stops after three endpoint attempts when four are available", async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.reject(new TypeError("Failed to fetch")),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new OverpassHttpClient(
+      [
+        "https://a.example/api/interpreter",
+        "https://b.example/api/interpreter",
+        "https://c.example/api/interpreter",
+        "https://d.example/api/interpreter",
+      ],
+      OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
+      identityOrder,
+    );
+
+    await expect(client.query("[out:json];out;")).rejects.toSatisfy(
+      (error: unknown) =>
+        error instanceof OverpassError &&
+        error.message.includes("Could not reach"),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+      "https://a.example/api/interpreter",
+      "https://b.example/api/interpreter",
+      "https://c.example/api/interpreter",
     ]);
   });
 
@@ -233,7 +236,7 @@ describe("OverpassHttpClient failover", () => {
         "https://first.example/api/interpreter",
         "https://second.example/api/interpreter",
       ],
-      OVERPASS_TIMEOUT_SECONDS * 1000,
+      OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
       identityOrder,
     );
 
@@ -245,20 +248,7 @@ describe("OverpassHttpClient failover", () => {
   });
 
   it("does not continue after caller abort on the first attempt", async () => {
-    const fetchMock = vi.fn(
-      (_url: string, init?: RequestInit) =>
-        new Promise<Response>((_resolve, reject) => {
-          init?.signal?.addEventListener(
-            "abort",
-            () => {
-              reject(
-                new DOMException("The operation was aborted.", "AbortError"),
-              );
-            },
-            { once: true },
-          );
-        }),
-    );
+    const fetchMock = vi.fn(hangingFetch);
     vi.stubGlobal("fetch", fetchMock);
 
     const controller = new AbortController();
@@ -267,7 +257,7 @@ describe("OverpassHttpClient failover", () => {
         "https://first.example/api/interpreter",
         "https://second.example/api/interpreter",
       ],
-      OVERPASS_TIMEOUT_SECONDS * 1000,
+      OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
       identityOrder,
     );
     const pending = client.query("[out:json];out;", controller.signal);
@@ -282,8 +272,11 @@ describe("OverpassHttpClient failover", () => {
 });
 
 describe("overpass helpers", () => {
-  it("includes the configured Overpass timeout seconds", () => {
+  it("includes the configured client soft timeout seconds", () => {
     expect(overpassTimeoutMessage()).toContain(
+      String(OVERPASS_CLIENT_TIMEOUT_SECONDS),
+    );
+    expect(overpassTimeoutMessage()).not.toContain(
       String(OVERPASS_TIMEOUT_SECONDS),
     );
   });
@@ -294,7 +287,7 @@ describe("overpass helpers", () => {
     ).toBe("overpass.private.coffee");
   });
 
-  it("treats 429 and 5xx as retryable and 400 as not", () => {
+  it("treats timeouts, 429, and 5xx as retryable and 400 as not", () => {
     expect(
       isRetryableOverpassFailure(new OverpassError("limited", { status: 429 })),
     ).toBe(true);
@@ -308,7 +301,7 @@ describe("overpass helpers", () => {
       isRetryableOverpassFailure(
         new OverpassError("timeout", { timedOut: true }),
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("merges attempt events by index", () => {

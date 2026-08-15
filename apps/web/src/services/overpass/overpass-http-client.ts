@@ -1,5 +1,7 @@
 import {
+  OVERPASS_CLIENT_TIMEOUT_SECONDS,
   OVERPASS_ENDPOINTS,
+  OVERPASS_MAX_ENDPOINT_ATTEMPTS,
   OVERPASS_TIMEOUT_SECONDS,
 } from "@/constants/api.constants";
 import type { OverpassResponse } from "@/types/places.types";
@@ -84,7 +86,7 @@ export class OverpassHttpClient implements IOverpassClient {
    */
   constructor(
     endpoints: readonly string[] = OVERPASS_ENDPOINTS,
-    timeoutMs: number = OVERPASS_TIMEOUT_SECONDS * 1000,
+    timeoutMs: number = OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
     shuffle: (endpoints: readonly string[]) => string[] = shuffleEndpoints,
   ) {
     this.endpoints = endpoints;
@@ -103,7 +105,10 @@ export class OverpassHttpClient implements IOverpassClient {
     signal?: AbortSignal,
     onAttempt?: OverpassAttemptListener,
   ): Promise<OverpassResponse> {
-    const order = this.shuffle(this.endpoints);
+    const order = this.shuffle(this.endpoints).slice(
+      0,
+      OVERPASS_MAX_ENDPOINT_ATTEMPTS,
+    );
     return this.queryInOrder(order, 0, query, signal, onAttempt);
   }
 
@@ -189,7 +194,7 @@ export class OverpassHttpClient implements IOverpassClient {
 
       if (error instanceof OverpassError && error.timedOut) {
         onAttempt?.({ endpoint, hostname, index, status: "timed_out" });
-        return { error, kind: "fatal" };
+        return { error, kind: "retry" };
       }
 
       if (!isRetryableOverpassFailure(error)) {
@@ -300,7 +305,7 @@ export function isRetryableOverpassFailure(error: unknown): boolean {
     return true;
   }
   if (error.timedOut) {
-    return false;
+    return true;
   }
   const { status } = error;
   if (status === undefined) {
@@ -341,10 +346,10 @@ export function shuffleEndpoints(endpoints: readonly string[]): string[] {
 }
 
 /**
- * Returns a user-facing message when an Overpass query hits the soft timeout budget.
+ * Returns a user-facing message when an Overpass query hits the client soft timeout.
  */
 export function overpassTimeoutMessage(): string {
-  return `Query timed out after about ${OVERPASS_TIMEOUT_SECONDS}s. Narrow the area or filters.`;
+  return `Query timed out after about ${OVERPASS_CLIENT_TIMEOUT_SECONDS}s. Narrow the area or filters.`;
 }
 
 /**
@@ -380,7 +385,7 @@ export function describeOverpassRemark(remark?: string): string | undefined {
     return;
   }
   if (remark.toLowerCase().includes("timeout")) {
-    return overpassTimeoutMessage();
+    return `Query timed out after about ${OVERPASS_TIMEOUT_SECONDS}s. Narrow the area or filters.`;
   }
   return remark;
 }

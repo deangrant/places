@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Spinner } from "@/components/core/Spinner";
-import { OVERPASS_TIMEOUT_SECONDS } from "@/constants/api.constants";
+import { OVERPASS_CLIENT_TIMEOUT_SECONDS } from "@/constants/api.constants";
 import { usePlaces } from "@/contexts/PlacesContext";
 import { MapView } from "@/pages/Places/components/MapView";
 import { OverpassQueryStatus } from "@/pages/Places/components/OverpassQueryStatus";
@@ -34,8 +34,17 @@ export function PlacesLayout() {
     [places, deferredAddressQuery],
   );
 
+  const currentAttemptIndex = useMemo(
+    () =>
+      overpassAttempts.reduce(
+        (max, attempt) => Math.max(max, attempt.index),
+        -1,
+      ),
+    [overpassAttempts],
+  );
+
   const [remainingSeconds, setRemainingSeconds] = useState(
-    OVERPASS_TIMEOUT_SECONDS,
+    OVERPASS_CLIENT_TIMEOUT_SECONDS,
   );
 
   useEffect(() => {
@@ -48,12 +57,15 @@ export function PlacesLayout() {
     if (!loading) {
       return;
     }
-    setRemainingSeconds(OVERPASS_TIMEOUT_SECONDS);
+    // Restart soft budget whenever failover advances currentAttemptIndex.
+    setRemainingSeconds(
+      currentAttemptIndex >= -1 ? OVERPASS_CLIENT_TIMEOUT_SECONDS : 0,
+    );
     const intervalId = window.setInterval(() => {
       setRemainingSeconds((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
     return () => window.clearInterval(intervalId);
-  }, [loading]);
+  }, [loading, currentAttemptIndex]);
 
   useEffect(() => {
     if (!selectedPlace) {

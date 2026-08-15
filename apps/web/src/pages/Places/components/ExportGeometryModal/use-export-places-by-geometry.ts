@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { OVERPASS_TIMEOUT_SECONDS } from "@/constants/api.constants";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { OVERPASS_CLIENT_TIMEOUT_SECONDS } from "@/constants/api.constants";
 import { mergeOverpassAttempt } from "@/pages/Places/utils/merge-overpass-attempt";
 import {
   preparePlacesForGeometryExport,
@@ -58,22 +58,34 @@ export function useExportPlacesByGeometry({
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState(
-    OVERPASS_TIMEOUT_SECONDS,
+    OVERPASS_CLIENT_TIMEOUT_SECONDS,
   );
   const [overpassAttempts, setOverpassAttempts] = useState<
     OverpassAttemptEvent[]
   >([]);
 
+  const currentAttemptIndex = useMemo(
+    () =>
+      overpassAttempts.reduce(
+        (max, attempt) => Math.max(max, attempt.index),
+        -1,
+      ),
+    [overpassAttempts],
+  );
+
   useEffect(() => {
     if (!exporting) {
       return;
     }
-    setRemainingSeconds(OVERPASS_TIMEOUT_SECONDS);
+    // Restart soft budget whenever failover advances currentAttemptIndex.
+    setRemainingSeconds(
+      currentAttemptIndex >= -1 ? OVERPASS_CLIENT_TIMEOUT_SECONDS : 0,
+    );
     const intervalId = window.setInterval(() => {
       setRemainingSeconds((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
     return () => window.clearInterval(intervalId);
-  }, [exporting]);
+  }, [exporting, currentAttemptIndex]);
 
   const canExport = useCallback(
     (selectedGeometry: PlaceGeometryType[]) =>
