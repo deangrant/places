@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PlacesProvider, usePlaces } from "@/contexts/PlacesContext";
 import { ServicesProvider } from "@/contexts/ServicesContext";
@@ -44,7 +44,9 @@ function CriteriaProbe({
   onCriteria: (criteria: PlaceSearchCriteria) => void;
 }) {
   const { criteria } = usePlaces();
-  onCriteria(criteria);
+  useEffect(() => {
+    onCriteria(criteria);
+  }, [criteria, onCriteria]);
   return null;
 }
 
