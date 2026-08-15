@@ -4,7 +4,7 @@ import type { OverpassQueryStatusProps } from "./index.types";
 
 const STATUS_LABEL: Record<OverpassAttemptEvent["status"], string> = {
   failed: "Failed",
-  started: "Querying",
+  started: "Searching",
   succeeded: "OK",
   timed_out: "Timed out",
 };
