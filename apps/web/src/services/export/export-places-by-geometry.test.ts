@@ -1,11 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  preparePlacesForGeometryExport,
-  resolveEffectiveGeometryType,
-} from "@/services/export/export-places-by-geometry";
+import { preparePlacesForGeometryExport } from "@/services/export/export-places-by-geometry";
 import type { Place, PlaceSearchCriteria } from "@/types/places.types";
-
-const AT_LEAST_ONE_TYPE = /at least one/i;
 
 const criteria: PlaceSearchCriteria = {
   brand: "Acme",
@@ -38,26 +33,6 @@ function place(partial: Partial<Place> & Pick<Place, "id">): Place {
     ...partial,
   };
 }
-
-describe("resolveEffectiveGeometryType", () => {
-  it("prefers MULTIPOLYGON when all types are selected", () => {
-    expect(
-      resolveEffectiveGeometryType(["POINT", "POLYGON", "MULTIPOLYGON"]),
-    ).toBe("MULTIPOLYGON");
-  });
-
-  it("prefers POLYGON over POINT", () => {
-    expect(resolveEffectiveGeometryType(["POINT", "POLYGON"])).toBe("POLYGON");
-  });
-
-  it("returns POINT when only POINT is selected", () => {
-    expect(resolveEffectiveGeometryType(["POINT"])).toBe("POINT");
-  });
-
-  it("throws when nothing is selected", () => {
-    expect(() => resolveEffectiveGeometryType([])).toThrow(AT_LEAST_ONE_TYPE);
-  });
-});
 
 describe("preparePlacesForGeometryExport", () => {
   it("delegates to exportByGeometry with criteria and type", async () => {

@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { OVERPASS_CLIENT_TIMEOUT_SECONDS } from "@/constants/api.constants";
 import { mergeOverpassAttempt } from "@/pages/Places/utils/merge-overpass-attempt";
-import {
-  preparePlacesForGeometryExport,
-  resolveEffectiveGeometryType,
-} from "@/services/export/export-places-by-geometry";
+import { preparePlacesForGeometryExport } from "@/services/export/export-places-by-geometry";
 import { downloadPlacesCsv } from "@/services/export/places-csv-export";
 import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client";
 import type { IPlaceGeometryExporter } from "@/services/places/place-search-service";
@@ -34,13 +31,13 @@ export interface UseExportPlacesByGeometryResult {
   /** Aborts the in-flight export and returns to the picker. */
   cancelExport: () => void;
   /** True when export is allowed for the current selection. */
-  canExport: (selectedGeometry: PlaceGeometryType[]) => boolean;
+  canExport: (geometryType: PlaceGeometryType | null) => boolean;
   /** Last export error message, or null. */
   error: string | null;
   /** True while an export Overpass request is in flight. */
   exporting: boolean;
-  /** Starts export for the given geometry selection. */
-  handleExport: (selectedGeometry: PlaceGeometryType[]) => void;
+  /** Starts export for the given geometry type. */
+  handleExport: (geometryType: PlaceGeometryType) => void;
   /** Live Overpass interpreter attempts for the in-flight export. */
   overpassAttempts: OverpassAttemptEvent[];
   /** Soft timeout countdown seconds remaining. */
@@ -102,14 +99,14 @@ export function useExportPlacesByGeometry({
   }, []);
 
   const canExport = useCallback(
-    (selectedGeometry: PlaceGeometryType[]) =>
-      selectedGeometry.length > 0 && !exporting,
+    (geometryType: PlaceGeometryType | null) =>
+      geometryType !== null && !exporting,
     [exporting],
   );
 
   const handleExport = useCallback(
-    (selectedGeometry: PlaceGeometryType[]) => {
-      if (selectedGeometry.length === 0 || exporting) {
+    (geometryType: PlaceGeometryType) => {
+      if (exporting) {
         return;
       }
 
@@ -118,18 +115,12 @@ export function useExportPlacesByGeometry({
       setOverpassAttempts([]);
       const controller = new AbortController();
       abortRef.current = controller;
-      const effectiveType = resolveEffectiveGeometryType(selectedGeometry);
 
       preparePlacesForGeometryExport(
         criteria,
-        effectiveType,
-        (exportCriteria, geometryType, signal, onAttempt) =>
-          placeExport.exportByGeometry(
-            exportCriteria,
-            geometryType,
-            signal,
-            onAttempt,
-          ),
+        geometryType,
+        (exportCriteria, type, signal, onAttempt) =>
+          placeExport.exportByGeometry(exportCriteria, type, signal, onAttempt),
         controller.signal,
         (attempt) => {
           setOverpassAttempts((prev) => mergeOverpassAttempt(prev, attempt));
@@ -137,7 +128,7 @@ export function useExportPlacesByGeometry({
       )
         .then((prepared) => {
           downloadPlacesCsv(prepared);
-          onExported?.(effectiveType);
+          onExported?.(geometryType);
           onClose();
         })
         .catch((exportError: unknown) => {

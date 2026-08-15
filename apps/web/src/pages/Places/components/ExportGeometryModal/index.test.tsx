@@ -145,21 +145,20 @@ describe("ExportGeometryModal", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("resolves MULTIPOLYGON when all tiles are selected", async () => {
+  it("exports the last selected geometry type when switching tiles", async () => {
     const { onExported, placeExport } = renderModal();
     vi.mocked(placeExport.exportByGeometry).mockResolvedValueOnce([]);
 
     fireEvent.click(screen.getByRole("button", { name: "POINT" }));
     fireEvent.click(screen.getByRole("button", { name: "POLYGON" }));
-    fireEvent.click(screen.getByRole("button", { name: "MULTIPOLYGON" }));
     fireEvent.click(screen.getByRole("button", { name: EXPORT_BUTTON }));
 
     await waitFor(() => {
-      expect(onExported).toHaveBeenCalledWith("MULTIPOLYGON");
+      expect(onExported).toHaveBeenCalledWith("POLYGON");
     });
     expect(placeExport.exportByGeometry).toHaveBeenCalledWith(
       {},
-      "MULTIPOLYGON",
+      "POLYGON",
       expect.any(AbortSignal),
       expect.any(Function),
     );

@@ -38,7 +38,6 @@ const FORMAT_HINTS: Record<PlaceExportFormat, string> = {
   WKT: "Well-Known Text — standard text geometry for GIS and spatial tools",
 };
 
-const DEFAULT_GEOMETRY_SELECTION: PlaceGeometryType[] = [];
 const DEFAULT_FORMAT_SELECTION: PlaceExportFormat[] = ["WKT"];
 
 /** Renders the geometry and format picker for a Places CSV export. */
@@ -49,9 +48,8 @@ export function ExportGeometryModal({
 }: ExportGeometryModalProps) {
   const { criteria } = usePlaces();
   const { placeExport } = useServices();
-  const [selectedGeometry, setSelectedGeometry] = useState<PlaceGeometryType[]>(
-    DEFAULT_GEOMETRY_SELECTION,
-  );
+  const [selectedGeometry, setSelectedGeometry] =
+    useState<PlaceGeometryType | null>(null);
   const [selectedFormats, setSelectedFormats] = useState<PlaceExportFormat[]>(
     DEFAULT_FORMAT_SELECTION,
   );
@@ -70,17 +68,12 @@ export function ExportGeometryModal({
     placeExport,
   });
 
-  const toggleGeometry = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+  const selectGeometry = useCallback((event: MouseEvent<HTMLButtonElement>) => {
     const type = event.currentTarget.dataset.geometryType;
     if (type !== "POINT" && type !== "POLYGON" && type !== "MULTIPOLYGON") {
       return;
     }
-    setSelectedGeometry((prev) => {
-      if (prev.includes(type)) {
-        return prev.filter((entry) => entry !== type);
-      }
-      return [...prev, type];
-    });
+    setSelectedGeometry(type);
   }, []);
 
   const toggleFormat = useCallback((event: MouseEvent<HTMLButtonElement>) => {
@@ -104,6 +97,9 @@ export function ExportGeometryModal({
     canExport(selectedGeometry) && selectedFormats.length > 0;
 
   const onExportClick = useCallback(() => {
+    if (!selectedGeometry) {
+      return;
+    }
     handleExport(selectedGeometry);
   }, [handleExport, selectedGeometry]);
 
@@ -118,14 +114,14 @@ export function ExportGeometryModal({
         title="Export places"
       >
         <p className={styles.hint}>
-          Select geometry and format for your CSV. If more than one geometry is
-          selected, Multipolygon takes priority, then Polygon, then Point.
+          Choose one geometry type and a format for your CSV. Only the selected
+          geometry type is exported.
         </p>
 
         <fieldset className={styles.tiles}>
           <legend className={styles.legend}>Geometry</legend>
           {EXPORT_GEOMETRY_TYPE_PRIORITY.map((type) => {
-            const isSelected = selectedGeometry.includes(type);
+            const isSelected = selectedGeometry === type;
             return (
               <button
                 aria-label={type}
@@ -136,7 +132,7 @@ export function ExportGeometryModal({
                 data-geometry-type={type}
                 disabled={exporting}
                 key={type}
-                onClick={toggleGeometry}
+                onClick={selectGeometry}
                 type="button"
               >
                 <span className={styles.tileLabel}>
