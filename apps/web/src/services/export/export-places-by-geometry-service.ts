@@ -1,4 +1,4 @@
-import type { OverpassAttemptListener } from "@/services/overpass/overpass-http-client";
+import type { OverpassAttemptListener } from "@/services/overpass/overpass-http-client-service";
 import type {
   Place,
   PlaceGeometryType,

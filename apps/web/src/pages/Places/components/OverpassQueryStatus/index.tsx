@@ -1,4 +1,4 @@
-import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client";
+import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client-service";
 import styles from "./index.module.css";
 import type { OverpassQueryStatusProps } from "./index.types";
 

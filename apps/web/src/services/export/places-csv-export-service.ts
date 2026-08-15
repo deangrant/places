@@ -118,6 +118,18 @@ export function buildPlacesCsv(places: Place[]): string {
 }
 
 /**
+ * Browser adapter that downloads Places CSV via an anchor click.
+ */
+export interface IPlacesCsvDownloader {
+  /**
+   * Triggers a CSV download for the given places.
+   * @param places Places to export.
+   * @param filename Optional download filename.
+   */
+  download: (places: Place[], filename?: string) => void;
+}
+
+/**
  * Triggers a browser download of places as CSV.
  * @param places Places to export (typically the filtered map/list set).
  * @param filename Optional download filename.
@@ -138,6 +150,11 @@ export function downloadPlacesCsv(
   anchor.remove();
   URL.revokeObjectURL(url);
 }
+
+/** Default browser CSV downloader used by the export modal. */
+export const browserPlacesCsvDownloader: IPlacesCsvDownloader = {
+  download: downloadPlacesCsv,
+};
 
 /**
  * Escapes a CSV field for spreadsheet-safe RFC4180 output.

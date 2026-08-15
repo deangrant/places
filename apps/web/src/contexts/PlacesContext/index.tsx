@@ -12,7 +12,13 @@ import { DEFAULT_MAP_VIEW } from "@/constants/api.constants";
 import { useServices } from "@/contexts/ServicesContext";
 import type { MapViewState, PlaceSearchCriteria } from "@/types/places.types";
 import { boundsFromPoints } from "@/utils/geo";
-import type { PlacesContextValue, PlacesProviderProps } from "./index.types";
+import type {
+  PlacesContextValue,
+  PlacesMapContextValue,
+  PlacesProviderProps,
+  PlacesSearchContextValue,
+  PlacesSelectionContextValue,
+} from "./index.types";
 import {
   initialPlacesSessionState,
   placesSessionReducer,
@@ -217,11 +223,68 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
   );
 }
 
-/** Returns the Places explorer context or throws when used outside the provider. */
+/** Returns the full Places explorer context or throws when used outside the provider. */
 export function usePlaces(): PlacesContextValue {
   const value = useContext(PlacesContext);
   if (!value) {
     throw new Error("usePlaces must be used within PlacesProvider.");
   }
   return value;
+}
+
+/** Returns criteria and search-session fields from Places context. */
+export function usePlacesSearch(): PlacesSearchContextValue {
+  const {
+    cancelSearch,
+    criteria,
+    error,
+    loading,
+    overpassAttempts,
+    places,
+    runSearch,
+    setCriteria,
+    truncated,
+  } = usePlaces();
+  return {
+    cancelSearch,
+    criteria,
+    error,
+    loading,
+    overpassAttempts,
+    places,
+    runSearch,
+    setCriteria,
+    truncated,
+  };
+}
+
+/** Returns map camera and fit-bounds fields from Places context. */
+export function usePlacesMap(): PlacesMapContextValue {
+  const {
+    boundsToFit,
+    clearBoundsToFit,
+    fitResultsBounds,
+    mapView,
+    setMapView,
+  } = usePlaces();
+  return {
+    boundsToFit,
+    clearBoundsToFit,
+    fitResultsBounds,
+    mapView,
+    setMapView,
+  };
+}
+
+/** Returns selection fields from Places context. */
+export function usePlacesSelection(): PlacesSelectionContextValue {
+  const { places, selectedPlace, selectedPlaceId, selectPlace, truncated } =
+    usePlaces();
+  return {
+    places,
+    selectedPlace,
+    selectedPlaceId,
+    selectPlace,
+    truncated,
+  };
 }

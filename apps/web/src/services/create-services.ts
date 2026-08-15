@@ -1,11 +1,13 @@
 import type { AppServices } from "@/services/app-services.types";
-import { NominatimAreaResolver } from "@/services/geocoding/nominatim-area-resolver";
-import { OverpassHttpClient } from "@/services/overpass/overpass-http-client";
-import { OsmPlaceNormalizer } from "@/services/places/osm-place-normalizer";
-import { PlaceQueryBuilder } from "@/services/places/place-query-builder";
+import { NominatimAreaResolver } from "@/services/geocoding/nominatim-area-resolver-service";
+import { OverpassHttpClient } from "@/services/overpass/overpass-http-client-service";
+import { OsmPlaceNormalizer } from "@/services/places/osm-place-normalizer-service";
+import { PlaceGeometryExportService } from "@/services/places/place-geometry-export-service";
+import { PlaceOverpassPipeline } from "@/services/places/place-overpass-pipeline-service";
+import { PlaceQueryBuilder } from "@/services/places/place-query-builder-service";
 import { PlaceSearchService } from "@/services/places/place-search-service";
-import { BrandCatalog } from "@/services/taxonomy/brand-catalog";
-import { CategoryTaxonomy } from "@/services/taxonomy/category-taxonomy";
+import { BrandCatalog } from "@/services/taxonomy/brand-catalog-service";
+import { CategoryTaxonomy } from "@/services/taxonomy/category-taxonomy-service";
 
 /**
  * Builds a fresh Places app service graph for injection.
@@ -18,16 +20,21 @@ export function createServices(): AppServices {
   const areaResolver = new NominatimAreaResolver();
   const queryBuilder = new PlaceQueryBuilder(taxonomy);
   const normalizer = new OsmPlaceNormalizer(taxonomy);
-  const placeSearch = new PlaceSearchService(
+  const pipeline = new PlaceOverpassPipeline(
     overpass,
     queryBuilder,
-    normalizer,
     areaResolver,
+  );
+  const placeSearch = new PlaceSearchService(pipeline, normalizer);
+  const placeExport = new PlaceGeometryExportService(
+    pipeline,
+    normalizer,
+    normalizer,
   );
 
   return {
     brandCatalog,
-    placeExport: placeSearch,
+    placeExport,
     placeSearch,
     taxonomy,
   };

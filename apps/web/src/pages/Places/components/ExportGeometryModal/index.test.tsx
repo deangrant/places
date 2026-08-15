@@ -11,19 +11,30 @@ import { PlacesProvider } from "@/contexts/PlacesContext";
 import { ServicesProvider } from "@/contexts/ServicesContext";
 import { ExportGeometryModal } from "@/pages/Places/components/ExportGeometryModal";
 import type { AppServices } from "@/services/app-services.types";
-import type {
-  IPlaceGeometryExporter,
-  IPlaceSearchService,
-} from "@/services/places/place-search-service";
+import type { IPlaceGeometryExporter } from "@/services/places/place-geometry-export-service";
+import type { IPlaceSearchService } from "@/services/places/place-search-service";
 import type { Place } from "@/types/places.types";
 
 const downloadPlacesCsv = vi.hoisted(() => vi.fn());
 const EXPORT_BUTTON = /^export$/i;
 const CANCEL_BUTTON = /^cancel$/i;
 
-vi.mock("@/services/export/places-csv-export", () => ({
-  downloadPlacesCsv,
-}));
+vi.mock(
+  "@/services/export/places-csv-export-service",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@/services/export/places-csv-export-service")
+      >();
+    return {
+      ...actual,
+      browserPlacesCsvDownloader: {
+        download: downloadPlacesCsv,
+      },
+      downloadPlacesCsv,
+    };
+  },
+);
 
 afterEach(() => {
   cleanup();
@@ -104,7 +115,6 @@ function renderModal(
       list: vi.fn(() => []),
       listByTopCategory: vi.fn(() => []),
       listTopCategories: vi.fn(() => []),
-      matchTags: vi.fn(),
     },
   };
 

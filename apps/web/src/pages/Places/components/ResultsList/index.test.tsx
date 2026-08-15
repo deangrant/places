@@ -8,6 +8,7 @@ const PLACE_ROW_NAME = /Place \d+/;
 
 vi.mock("@/contexts/PlacesContext", () => ({
   usePlaces: (): PlacesContextValue => mockValue,
+  usePlacesSelection: (): PlacesContextValue => mockValue,
 }));
 
 let mockValue: PlacesContextValue;

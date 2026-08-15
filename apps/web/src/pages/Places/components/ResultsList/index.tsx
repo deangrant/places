@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import { Button } from "@/components/core/Button";
 import { Input } from "@/components/core/Input";
-import { usePlaces } from "@/contexts/PlacesContext";
+import { usePlacesSelection } from "@/contexts/PlacesContext";
 import styles from "./index.module.css";
 import type { ResultRowProps, ResultsListProps } from "./index.types";
 import { useFixedVirtualList } from "./use-fixed-virtual-list";
@@ -16,7 +16,7 @@ export function ResultsList({
   query,
   onQueryChange,
 }: ResultsListProps) {
-  const { selectedPlaceId, selectPlace, truncated } = usePlaces();
+  const { selectedPlaceId, selectPlace, truncated } = usePlacesSelection();
   const listRef = useRef<HTMLElement>(null);
   const { totalHeight, virtualItems } = useFixedVirtualList({
     count: places.length,

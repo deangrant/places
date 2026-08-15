@@ -4,18 +4,19 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/core/Button";
 import { Modal } from "@/components/core/Modal";
 import { Spinner } from "@/components/core/Spinner";
-import { usePlaces } from "@/contexts/PlacesContext";
+import { usePlacesSearch } from "@/contexts/PlacesContext";
 import { useServices } from "@/contexts/ServicesContext";
 import { OverpassQueryStatus } from "@/pages/Places/components/OverpassQueryStatus";
-import { EXPORT_GEOMETRY_TYPE_PRIORITY } from "@/services/export/export-places-by-geometry";
+import { EXPORT_GEOMETRY_TYPE_PRIORITY } from "@/services/export/export-places-by-geometry-service";
+import { browserPlacesCsvDownloader } from "@/services/export/places-csv-export-service";
 import type { PlaceGeometryType } from "@/types/places.types";
 import { formatCountdown } from "@/utils/format-countdown";
 import styles from "./index.module.css";
-import type { ExportGeometryModalProps } from "./index.types";
+import type {
+  ExportGeometryModalProps,
+  PlaceExportFormat,
+} from "./index.types";
 import { useExportPlacesByGeometry } from "./use-export-places-by-geometry";
-
-/** Supported CSV geometry encodings for export. */
-export type PlaceExportFormat = "WKT";
 
 const GEOMETRY_LABELS: Record<PlaceGeometryType, string> = {
   MULTIPOLYGON: "Multipolygon",
@@ -47,7 +48,7 @@ export function ExportGeometryModal({
   onClose,
   onExported,
 }: ExportGeometryModalProps) {
-  const { criteria } = usePlaces();
+  const { criteria } = usePlacesSearch();
   const { placeExport } = useServices();
   const [selectedGeometry, setSelectedGeometry] =
     useState<PlaceGeometryType | null>(null);
@@ -64,6 +65,7 @@ export function ExportGeometryModal({
     remainingSeconds,
   } = useExportPlacesByGeometry({
     criteria,
+    csvDownloader: browserPlacesCsvDownloader,
     onClose,
     onExported,
     placeExport,

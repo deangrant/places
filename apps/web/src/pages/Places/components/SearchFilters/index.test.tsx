@@ -5,10 +5,8 @@ import { PlacesProvider, usePlaces } from "@/contexts/PlacesContext";
 import { ServicesProvider } from "@/contexts/ServicesContext";
 import { SearchFilters } from "@/pages/Places/components/SearchFilters";
 import type { AppServices } from "@/services/app-services.types";
-import type {
-  IPlaceGeometryExporter,
-  IPlaceSearchService,
-} from "@/services/places/place-search-service";
+import type { IPlaceGeometryExporter } from "@/services/places/place-geometry-export-service";
+import type { IPlaceSearchService } from "@/services/places/place-search-service";
 import type {
   CategoryDefinition,
   PlaceSearchCriteria,
@@ -72,7 +70,6 @@ function renderFilters(): {
       listByTopCategory: (top) =>
         [coffee, bakery].filter((category) => category.topCategory === top),
       listTopCategories: () => ["Food Services"],
-      matchTags: () => undefined,
     },
   };
 

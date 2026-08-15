@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { mergeOverpassAttempt } from "@/services/overpass/merge-overpass-attempt";
-import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client";
+import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client-service";
+import { mergeOverpassAttempt } from "@/utils/merge-overpass-attempt";
 
 describe("mergeOverpassAttempt", () => {
   it("merges attempt events by index", () => {

@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { RESULT_LIMIT } from "@/constants/api.constants";
-import type { IAreaResolver } from "@/services/geocoding/nominatim-area-resolver";
-import type { IOverpassClient } from "@/services/overpass/overpass-http-client";
-import type { IOsmPlaceNormalizer } from "@/services/places/osm-place-normalizer";
-import type { IPlaceQueryBuilder } from "@/services/places/place-query-builder";
+import type { IAreaResolver } from "@/services/geocoding/nominatim-area-resolver-service";
+import type { IOverpassClient } from "@/services/overpass/overpass-http-client-service";
+import type { IOsmPlaceNormalizer } from "@/services/places/osm-place-normalizer-service";
+import { PlaceOverpassPipeline } from "@/services/places/place-overpass-pipeline-service";
+import type { IPlaceQueryBuilder } from "@/services/places/place-query-builder-service";
 import { PlaceSearchService } from "@/services/places/place-search-service";
 import type {
   GeocodeResult,
@@ -86,17 +87,17 @@ function createService(options: {
   const areaResolver: IAreaResolver = options.areaResolver ?? {
     resolveAdmin: vi.fn(async () => adminRelation),
   };
+  const pipeline = new PlaceOverpassPipeline(
+    overpass,
+    queryBuilder,
+    areaResolver,
+  );
   return {
     areaResolver,
     normalizer,
     overpass,
     queryBuilder,
-    service: new PlaceSearchService(
-      overpass,
-      queryBuilder,
-      normalizer,
-      areaResolver,
-    ),
+    service: new PlaceSearchService(pipeline, normalizer),
   };
 }
 
@@ -219,74 +220,5 @@ describe("PlaceSearchService.search", () => {
     await expect(
       service.search(baseCriteria, controller.signal),
     ).rejects.toMatchObject({ name: "AbortError" });
-  });
-});
-
-describe("PlaceSearchService.exportByGeometry", () => {
-  it("uses center output and center normalizer for POINT", async () => {
-    const queryBuilder: IPlaceQueryBuilder = {
-      build: vi.fn(() => "center-query"),
-    };
-    const normalizer: IOsmPlaceNormalizer = {
-      normalize: vi.fn(() => [
-        makePlace({ geometryType: "POINT", id: "node/1" }),
-      ]),
-      normalizeWithGeometry: vi.fn(() => []),
-    };
-    const overpass = {
-      query: vi.fn(async () => ({
-        elements: [{ id: 1, type: "node" as const }],
-      })),
-    };
-    const { service } = createService({ normalizer, overpass, queryBuilder });
-
-    const places = await service.exportByGeometry(baseCriteria, "POINT");
-
-    expect(queryBuilder.build).toHaveBeenCalledWith(
-      baseCriteria,
-      expect.objectContaining({ areaId: expect.any(Number) }),
-      "center",
-    );
-    expect(normalizer.normalize).toHaveBeenCalled();
-    expect(normalizer.normalizeWithGeometry).not.toHaveBeenCalled();
-    expect(places).toHaveLength(1);
-    expect(places[0].geometryType).toBe("POINT");
-  });
-
-  it("uses geom output and keeps only matching POLYGON rows", async () => {
-    const queryBuilder: IPlaceQueryBuilder = {
-      build: vi.fn(() => "geom-query"),
-    };
-    const normalizer: IOsmPlaceNormalizer = {
-      normalize: vi.fn(() => []),
-      normalizeWithGeometry: vi.fn(() => [
-        makePlace({ geometryType: "POINT", id: "node/1", osmType: "node" }),
-        makePlace({
-          geometryType: "POLYGON",
-          id: "way/2",
-          osmId: 2,
-          osmType: "way",
-        }),
-        makePlace({
-          geometryType: "MULTIPOLYGON",
-          id: "relation/3",
-          osmId: 3,
-          osmType: "relation",
-        }),
-      ]),
-    };
-    const { service } = createService({ normalizer, queryBuilder });
-
-    const places = await service.exportByGeometry(baseCriteria, "POLYGON");
-
-    expect(queryBuilder.build).toHaveBeenCalledWith(
-      baseCriteria,
-      expect.anything(),
-      "geom",
-    );
-    expect(normalizer.normalizeWithGeometry).toHaveBeenCalled();
-    expect(normalizer.normalize).not.toHaveBeenCalled();
-    expect(places).toHaveLength(1);
-    expect(places[0].id).toBe("way/2");
   });
 });

@@ -3,16 +3,16 @@ import {
   OVERPASS_CLIENT_TIMEOUT_SECONDS,
   OVERPASS_TIMEOUT_SECONDS,
 } from "@/constants/api.constants";
+import { OverpassError } from "@/services/overpass/overpass-error";
 import {
   describeOverpassRemark,
   hostnameFromEndpoint,
   isRetryableOverpassFailure,
   type OverpassAttemptEvent,
-  OverpassError,
   OverpassHttpClient,
   overpassTimeoutMessage,
   shuffleEndpoints,
-} from "@/services/overpass/overpass-http-client";
+} from "@/services/overpass/overpass-http-client-service";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -43,6 +43,28 @@ function hangingFetch(_url: string, init?: RequestInit): Promise<Response> {
     );
   });
 }
+
+describe("OverpassHttpClient default fetchImpl", () => {
+  it("uses globalThis.fetch when no fetchImpl is injected", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ elements: [{ id: 1 }] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new OverpassHttpClient(
+      ["https://example.test/interpreter"],
+      OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
+      identityOrder,
+    );
+    const response = await client.query("[out:json];out;");
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "https://example.test/interpreter",
+    );
+    expect(response.elements).toEqual([{ id: 1 }]);
+  });
+});
 
 describe("OverpassHttpClient query timeout", () => {
   it("throws OverpassError when the client timeout elapses", async () => {
@@ -196,7 +218,7 @@ describe("OverpassHttpClient failover", () => {
   });
 
   it("stops after three endpoint attempts when four are available", async () => {
-    const fetchMock = vi.fn(() =>
+    const fetchMock = vi.fn((_input: RequestInfo | URL, _init?: RequestInit) =>
       Promise.reject(new TypeError("Failed to fetch")),
     );
     vi.stubGlobal("fetch", fetchMock);

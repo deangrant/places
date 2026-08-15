@@ -1,4 +1,8 @@
-import type { ICategoryMatcher } from "@/services/taxonomy/category-taxonomy";
+import {
+  inferSubCategory,
+  inferTopCategory,
+} from "@/services/places/osm-category-inference";
+import type { ICategoryMatcher } from "@/services/taxonomy/category-taxonomy-service";
 import type { OsmElement, Place } from "@/types/places.types";
 import type { NormalizedOsmGeometry } from "@/utils/osm-geometry";
 import {
@@ -7,9 +11,9 @@ import {
 } from "@/utils/osm-geometry";
 
 /**
- * Maps raw OSM Overpass elements into Places DTOs.
+ * Maps Overpass `out center` elements into Places with point geometry.
  */
-export interface IOsmPlaceNormalizer {
+export interface ICenterPlaceNormalizer {
   /**
    * Normalizes a list of OSM elements into Places with coordinates.
    * Uses center-point geometry (`out center`).
@@ -20,6 +24,12 @@ export interface IOsmPlaceNormalizer {
     elements: OsmElement[],
     context?: PlaceNormalizeContext,
   ) => Place[];
+}
+
+/**
+ * Maps Overpass `out geom` elements into Places with footprints.
+ */
+export interface IGeometryPlaceNormalizer {
   /**
    * Normalizes Overpass elements using full footprints (`out geom`).
    * @param elements Overpass elements printed with geometry.
@@ -30,6 +40,13 @@ export interface IOsmPlaceNormalizer {
     context?: PlaceNormalizeContext,
   ) => Place[];
 }
+
+/**
+ * Maps raw OSM Overpass elements into Places DTOs (center and footprint modes).
+ */
+export interface IOsmPlaceNormalizer
+  extends ICenterPlaceNormalizer,
+    IGeometryPlaceNormalizer {}
 
 /**
  * Address fields inherited from the active search scope when OSM tags omit them.
@@ -56,7 +73,9 @@ export class OsmPlaceNormalizer implements IOsmPlaceNormalizer {
     this.taxonomy = taxonomy;
   }
 
-  /** @inheritdoc */
+  /**
+   * Normalizes a list of OSM elements into Places with center-point geometry.
+   */
   normalize(
     elements: OsmElement[],
     context: PlaceNormalizeContext = {},
@@ -64,7 +83,9 @@ export class OsmPlaceNormalizer implements IOsmPlaceNormalizer {
     return this.normalizeAll(elements, context, normalizeOsmCenterPoint);
   }
 
-  /** @inheritdoc */
+  /**
+   * Normalizes Overpass elements into Places using full footprints.
+   */
   normalizeWithGeometry(
     elements: OsmElement[],
     context: PlaceNormalizeContext = {},
@@ -192,60 +213,6 @@ function normalizeCountry(value?: string | null): string | null {
     return trimmed.toUpperCase();
   }
   return trimmed;
-}
-
-/**
- * Infers a coarse top category from primary OSM keys when taxonomy misses.
- * @param tags OSM tags.
- */
-function inferTopCategory(tags: Record<string, string>): string | null {
-  if (Object.hasOwn(tags, "amenity")) {
-    return "Amenities";
-  }
-  if (Object.hasOwn(tags, "shop")) {
-    return "Retail Trade";
-  }
-  if (Object.hasOwn(tags, "tourism")) {
-    return "Tourism";
-  }
-  if (Object.hasOwn(tags, "leisure")) {
-    return "Arts and Recreation";
-  }
-  if (Object.hasOwn(tags, "office")) {
-    return "Professional Services";
-  }
-  if (Object.hasOwn(tags, "craft")) {
-    return "Other Services";
-  }
-  if (Object.hasOwn(tags, "healthcare")) {
-    return "Health Care";
-  }
-  return null;
-}
-
-/**
- * Infers a sub-category label from the primary OSM tag value.
- * @param tags OSM tags.
- */
-function inferSubCategory(tags: Record<string, string>): string | null {
-  const value = [
-    "amenity",
-    "shop",
-    "tourism",
-    "leisure",
-    "office",
-    "craft",
-    "healthcare",
-  ]
-    .map((key) => readTag(tags, key))
-    .find((candidate) => candidate !== null);
-  if (!value) {
-    return null;
-  }
-  return value
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
 }
 
 /**

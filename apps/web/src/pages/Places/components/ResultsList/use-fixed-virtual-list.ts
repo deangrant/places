@@ -17,7 +17,7 @@ export interface FixedVirtualItem {
 }
 
 /**
- * Options for {@link useFixedVirtualList}.
+ * Options for the fixed-row virtual list hook.
  */
 export interface UseFixedVirtualListOptions {
   /** Total number of rows in the full list. */
@@ -31,7 +31,7 @@ export interface UseFixedVirtualListOptions {
 }
 
 /**
- * Result of {@link useFixedVirtualList}.
+ * Result of the fixed-row virtual list hook.
  */
 export interface UseFixedVirtualListResult {
   /** Total scrollable height for the spacer (`count * rowHeight`). */

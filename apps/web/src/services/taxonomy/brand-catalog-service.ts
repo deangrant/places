@@ -16,7 +16,10 @@ export interface IBrandCatalog {
  * Brand catalog backed by the bundled popular-chains list.
  */
 export class BrandCatalog implements IBrandCatalog {
-  /** @inheritdoc */
+  /**
+   * Returns brand names matching a case-insensitive prefix/substring query.
+   * Empty query returns a short default slice of the catalog.
+   */
   search(query: string, limit = 12): string[] {
     const trimmed = query.trim().toLowerCase();
     if (!trimmed) {

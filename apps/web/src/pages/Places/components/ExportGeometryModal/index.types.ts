@@ -1,5 +1,8 @@
 import type { PlaceGeometryType } from "@/types/places.types";
 
+/** Supported CSV geometry encodings for export. */
+export type PlaceExportFormat = "WKT";
+
 /**
  * Props for the export geometry type selection modal.
  */

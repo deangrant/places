@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { OsmPlaceNormalizer } from "@/services/places/osm-place-normalizer";
-import type { ICategoryMatcher } from "@/services/taxonomy/category-taxonomy";
+import { OsmPlaceNormalizer } from "@/services/places/osm-place-normalizer-service";
+import type { ICategoryMatcher } from "@/services/taxonomy/category-taxonomy-service";
 import type { OsmElement } from "@/types/places.types";
 
 const taxonomy: ICategoryMatcher = {

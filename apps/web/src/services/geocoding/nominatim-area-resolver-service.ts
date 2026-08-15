@@ -30,7 +30,10 @@ export class NominatimAreaResolver implements IAreaResolver {
     this.endpoint = endpoint;
   }
 
-  /** @inheritdoc */
+  /**
+   * Resolves country / region / city filters into a geocode result suitable
+   * for Overpass area conversion.
+   */
   async resolveAdmin(
     parts: { countryCode?: string; region?: string; city?: string },
     signal?: AbortSignal,

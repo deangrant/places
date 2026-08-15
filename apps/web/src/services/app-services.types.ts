@@ -1,9 +1,7 @@
-import type {
-  IPlaceGeometryExporter,
-  IPlaceSearchService,
-} from "@/services/places/place-search-service";
-import type { IBrandCatalog } from "@/services/taxonomy/brand-catalog";
-import type { ICategoryTaxonomy } from "@/services/taxonomy/category-taxonomy";
+import type { IPlaceGeometryExporter } from "@/services/places/place-geometry-export-service";
+import type { IPlaceSearchService } from "@/services/places/place-search-service";
+import type { IBrandCatalog } from "@/services/taxonomy/brand-catalog-service";
+import type { ICategoryLookup } from "@/services/taxonomy/category-taxonomy-service";
 
 /**
  * Application service ports wired by the composition root.
@@ -16,6 +14,6 @@ export interface AppServices {
   placeExport: IPlaceGeometryExporter;
   /** Places map search. */
   placeSearch: IPlaceSearchService;
-  /** Industry taxonomy lookup and OSM tag matching. */
-  taxonomy: ICategoryTaxonomy;
+  /** Industry taxonomy lookup for filters. */
+  taxonomy: ICategoryLookup;
 }

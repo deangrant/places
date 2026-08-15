@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client";
+import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client-service";
 import type {
   BBox,
   MapViewState,
@@ -58,3 +58,33 @@ export interface PlacesContextValue {
   /** True when the Overpass response hit the configured result limit. */
   truncated: boolean;
 }
+
+/** Criteria and search-session slice for filters and loaders. */
+export type PlacesSearchContextValue = Pick<
+  PlacesContextValue,
+  | "cancelSearch"
+  | "criteria"
+  | "error"
+  | "loading"
+  | "overpassAttempts"
+  | "places"
+  | "runSearch"
+  | "setCriteria"
+  | "truncated"
+>;
+
+/** Map camera and fit-bounds slice. */
+export type PlacesMapContextValue = Pick<
+  PlacesContextValue,
+  | "boundsToFit"
+  | "clearBoundsToFit"
+  | "fitResultsBounds"
+  | "mapView"
+  | "setMapView"
+>;
+
+/** Place selection slice for results list and detail. */
+export type PlacesSelectionContextValue = Pick<
+  PlacesContextValue,
+  "places" | "selectedPlace" | "selectedPlaceId" | "selectPlace" | "truncated"
+>;

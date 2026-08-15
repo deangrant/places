@@ -3,7 +3,7 @@ import {
   RESULT_LIMIT,
 } from "@/constants/api.constants";
 import { isAllowedOsmTagKey } from "@/constants/osm-tags.constants";
-import type { ICategoryLookup } from "@/services/taxonomy/category-taxonomy";
+import type { ICategoryLookup } from "@/services/taxonomy/category-taxonomy-service";
 import type { PlaceSearchCriteria, SpatialScope } from "@/types/places.types";
 
 /**
@@ -164,7 +164,7 @@ export class PlaceQueryBuilder implements IPlaceQueryBuilder {
 
   /**
    * Formats an optional case-insensitive exact brand filter (`^…$`).
-   * Unlike {@link PlaceQueryBuilder.formatNameClause}, this is not a substring match.
+   * Unlike nameContains, this is not a substring match.
    * @param brand Brand text from the user.
    */
   private formatBrandClause(brand?: string): string {

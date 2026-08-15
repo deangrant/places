@@ -4,6 +4,11 @@ import {
   OVERPASS_MAX_ENDPOINT_ATTEMPTS,
   OVERPASS_TIMEOUT_SECONDS,
 } from "@/constants/api.constants";
+import { OverpassError } from "@/services/overpass/overpass-error";
+import {
+  overpassStatusMessage,
+  parseOverpassResponseBody,
+} from "@/services/overpass/overpass-response-parser";
 import type { OverpassResponse } from "@/types/places.types";
 
 /** Lifecycle status for one interpreter attempt during a query. */
@@ -47,29 +52,15 @@ export interface IOverpassClient {
   ) => Promise<OverpassResponse>;
 }
 
-/**
- * Error raised when Overpass returns a non-success HTTP status or empty body.
- */
-export class OverpassError extends Error {
-  /** HTTP status when the failure came from a non-success response. */
-  readonly status?: number;
-  /** True when the client soft-timeout aborted the attempt. */
-  readonly timedOut: boolean;
+/** Fetch-compatible function used by the Overpass HTTP client. */
+export type OverpassFetch = typeof fetch;
 
-  /**
-   * @param message Human-readable error summary.
-   * @param options Optional status, timeout flag, and Error cause.
-   */
-  constructor(
-    message: string,
-    options?: ErrorOptions & { status?: number; timedOut?: boolean },
-  ) {
-    super(message, options);
-    this.name = "OverpassError";
-    this.status = options?.status;
-    this.timedOut = options?.timedOut === true;
-  }
-}
+/**
+ * Default fetch that keeps the correct `globalThis` receiver.
+ * Storing unbound `fetch` and calling it later throws Illegal invocation in browsers.
+ */
+const defaultOverpassFetch: OverpassFetch = (input, init) =>
+  globalThis.fetch(input, init);
 
 /**
  * HTTP Overpass client with randomized sequential failover across interpreters.
@@ -78,20 +69,24 @@ export class OverpassHttpClient implements IOverpassClient {
   private readonly endpoints: readonly string[];
   private readonly timeoutMs: number;
   private readonly shuffle: (endpoints: readonly string[]) => string[];
+  private readonly fetchImpl: OverpassFetch;
 
   /**
    * @param endpoints Interpreter URLs (shuffled per query unless overridden).
    * @param timeoutMs Client-side abort budget in milliseconds per attempt.
    * @param shuffle Endpoint orderer; defaults to Fisher–Yates shuffle.
+   * @param fetchImpl HTTP fetch implementation; defaults to globalThis.fetch.
    */
   constructor(
     endpoints: readonly string[] = OVERPASS_ENDPOINTS,
     timeoutMs: number = OVERPASS_CLIENT_TIMEOUT_SECONDS * 1000,
     shuffle: (endpoints: readonly string[]) => string[] = shuffleEndpoints,
+    fetchImpl: OverpassFetch = defaultOverpassFetch,
   ) {
     this.endpoints = endpoints;
     this.timeoutMs = timeoutMs;
     this.shuffle = shuffle;
+    this.fetchImpl = fetchImpl;
   }
 
   /**
@@ -232,7 +227,7 @@ export class OverpassHttpClient implements IOverpassClient {
     const combined = combineAbortSignals(signal, timeout.signal);
     let response: Response;
     try {
-      response = await fetch(endpoint, {
+      response = await this.fetchImpl(endpoint, {
         body,
         headers: {
           "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
@@ -265,28 +260,7 @@ export class OverpassHttpClient implements IOverpassClient {
     }
 
     const text = await response.text();
-
-    let parsed: OverpassResponse;
-    try {
-      parsed = JSON.parse(text) as OverpassResponse;
-    } catch (error) {
-      if (isOverpassPlainTextError(text)) {
-        throw new OverpassError(
-          "Overpass rejected the query. Narrow the area or simplify filters.",
-          { cause: error },
-        );
-      }
-      throw new OverpassError(
-        "Overpass returned an unexpected response. Try a smaller search area.",
-        { cause: error },
-      );
-    }
-
-    if (!Array.isArray(parsed.elements)) {
-      throw new OverpassError("Overpass response was missing place elements.");
-    }
-
-    return parsed;
+    return parseOverpassResponseBody(text);
   }
 }
 
@@ -350,30 +324,6 @@ export function shuffleEndpoints(endpoints: readonly string[]): string[] {
  */
 export function overpassTimeoutMessage(): string {
   return `Query timed out after about ${OVERPASS_CLIENT_TIMEOUT_SECONDS}s. Narrow the area or filters.`;
-}
-
-/**
- * True when a non-JSON Overpass body looks like an interpreter error envelope.
- * Only used after JSON.parse fails so OSM tag substrings cannot false-positive.
- * @param text Raw response body.
- */
-function isOverpassPlainTextError(text: string): boolean {
-  const trimmed = text.trimStart().toLowerCase();
-  return trimmed.startsWith("runtime error:") || trimmed.startsWith("error:");
-}
-
-/**
- * Maps Overpass HTTP status codes to user-facing messages.
- * @param status HTTP status from the Overpass response.
- */
-function overpassStatusMessage(status: number): string {
-  if (status === 429) {
-    return "The Overpass server is rate-limiting requests. Wait a moment and retry.";
-  }
-  if (status === 504 || status === 408) {
-    return "The Overpass query timed out. Narrow the area or filters.";
-  }
-  return `Overpass request failed (HTTP ${status}).`;
 }
 
 /**

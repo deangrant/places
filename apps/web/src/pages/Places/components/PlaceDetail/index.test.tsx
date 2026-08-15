@@ -32,6 +32,7 @@ const basePlace: Place = {
 
 vi.mock("@/contexts/PlacesContext", () => ({
   usePlaces: (): PlacesContextValue => mockValue,
+  usePlacesSelection: (): PlacesContextValue => mockValue,
 }));
 
 let mockValue: PlacesContextValue;

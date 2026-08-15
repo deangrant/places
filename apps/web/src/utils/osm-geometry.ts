@@ -59,8 +59,6 @@ export function normalizeOsmCenterPoint(
 
 /**
  * Creates a POINT geometry from a single coordinate.
- * @param lat Latitude.
- * @param lon Longitude.
  */
 function fromPoint(
   lat: number | undefined,
@@ -192,7 +190,6 @@ function toLonLatRing(geometry: OsmLatLon[] | undefined): LonLat[] | null {
 
 /**
  * Returns true when the first and last positions are effectively equal.
- * @param ring Lon/lat ring.
  */
 function isClosedRing(ring: LonLat[]): boolean {
   if (ring.length < 2) {
@@ -211,7 +208,6 @@ function isClosedRing(ring: LonLat[]): boolean {
 
 /**
  * Ensures the ring repeats the first coordinate at the end.
- * @param ring Lon/lat ring.
  */
 function ensureClosed(ring: LonLat[]): LonLat[] {
   if (isClosedRing(ring)) {
@@ -222,7 +218,6 @@ function ensureClosed(ring: LonLat[]): LonLat[] {
 
 /**
  * Computes a simple average centroid for a ring (adequate for markers).
- * @param ring Lon/lat ring.
  */
 function ringCentroid(ring: LonLat[]): LonLat {
   const usable =
@@ -302,7 +297,6 @@ function formatRingWkt(ring: LonLat[]): string {
 
 /**
  * Formats a coordinate with stable precision for compact WKT.
- * @param value Numeric coordinate.
  */
 function formatCoord(value: number): string {
   return Number(value.toFixed(COORD_PRECISION)).toString();

@@ -1,13 +1,13 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/core/Button";
 import { Spinner } from "@/components/core/Spinner";
-import { OVERPASS_CLIENT_TIMEOUT_SECONDS } from "@/constants/api.constants";
 import { usePlaces } from "@/contexts/PlacesContext";
 import { MapView } from "@/pages/Places/components/MapView";
 import { OverpassQueryStatus } from "@/pages/Places/components/OverpassQueryStatus";
 import { PlaceDetail } from "@/pages/Places/components/PlaceDetail";
 import { ResultsList } from "@/pages/Places/components/ResultsList";
 import { SearchFilters } from "@/pages/Places/components/SearchFilters";
+import { useOverpassAttemptCountdown } from "@/pages/Places/use-overpass-attempt-countdown";
 import { filterPlacesByAddress } from "@/utils/filter-places-by-address";
 import { formatCountdown } from "@/utils/format-countdown";
 import styles from "./index.module.css";
@@ -37,38 +37,16 @@ export function PlacesLayout() {
     [places, deferredAddressQuery],
   );
 
-  const currentAttemptIndex = useMemo(
-    () =>
-      overpassAttempts.reduce(
-        (max, attempt) => Math.max(max, attempt.index),
-        -1,
-      ),
-    [overpassAttempts],
-  );
-
-  const [remainingSeconds, setRemainingSeconds] = useState(
-    OVERPASS_CLIENT_TIMEOUT_SECONDS,
-  );
+  const remainingSeconds = useOverpassAttemptCountdown({
+    active: loading,
+    attempts: overpassAttempts,
+  });
 
   useEffect(() => {
     if (loading) {
       setAddressQuery("");
     }
   }, [loading]);
-
-  useEffect(() => {
-    if (!loading) {
-      return;
-    }
-    // Restart soft budget whenever failover advances currentAttemptIndex.
-    setRemainingSeconds(
-      currentAttemptIndex >= -1 ? OVERPASS_CLIENT_TIMEOUT_SECONDS : 0,
-    );
-    const intervalId = window.setInterval(() => {
-      setRemainingSeconds((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => window.clearInterval(intervalId);
-  }, [loading, currentAttemptIndex]);
 
   useEffect(() => {
     if (!selectedPlace) {

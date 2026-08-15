@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { preparePlacesForGeometryExport } from "@/services/export/export-places-by-geometry";
+import { preparePlacesForGeometryExport } from "@/services/export/export-places-by-geometry-service";
 import type { Place, PlaceSearchCriteria } from "@/types/places.types";
 
 const criteria: PlaceSearchCriteria = {

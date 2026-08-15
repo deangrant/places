@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { OVERPASS_CLIENT_TIMEOUT_SECONDS } from "@/constants/api.constants";
-import { preparePlacesForGeometryExport } from "@/services/export/export-places-by-geometry";
-import { downloadPlacesCsv } from "@/services/export/places-csv-export";
-import { mergeOverpassAttempt } from "@/services/overpass/merge-overpass-attempt";
-import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client";
-import type { IPlaceGeometryExporter } from "@/services/places/place-search-service";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useOverpassAttemptCountdown } from "@/pages/Places/use-overpass-attempt-countdown";
+import { preparePlacesForGeometryExport } from "@/services/export/export-places-by-geometry-service";
+import {
+  browserPlacesCsvDownloader,
+  type IPlacesCsvDownloader,
+} from "@/services/export/places-csv-export-service";
+import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client-service";
+import type { IPlaceGeometryExporter } from "@/services/places/place-geometry-export-service";
 import type {
   PlaceGeometryType,
   PlaceSearchCriteria,
 } from "@/types/places.types";
+import { mergeOverpassAttempt } from "@/utils/merge-overpass-attempt";
 
 /**
  * Options for the geometry CSV export hook.
@@ -16,6 +19,8 @@ import type {
 export interface UseExportPlacesByGeometryOptions {
   /** Active Places search criteria to re-query. */
   criteria: PlaceSearchCriteria;
+  /** Triggers the browser CSV download after places are prepared. */
+  csvDownloader?: IPlacesCsvDownloader;
   /** Called when the dialog should close after a successful export. */
   onClose: () => void;
   /** Optional callback after a successful download with the effective type. */
@@ -50,42 +55,22 @@ export interface UseExportPlacesByGeometryResult {
  */
 export function useExportPlacesByGeometry({
   criteria,
+  csvDownloader = browserPlacesCsvDownloader,
   onClose,
   onExported,
   placeExport,
 }: UseExportPlacesByGeometryOptions): UseExportPlacesByGeometryResult {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [remainingSeconds, setRemainingSeconds] = useState(
-    OVERPASS_CLIENT_TIMEOUT_SECONDS,
-  );
   const [overpassAttempts, setOverpassAttempts] = useState<
     OverpassAttemptEvent[]
   >([]);
   const abortRef = useRef<AbortController | null>(null);
 
-  const currentAttemptIndex = useMemo(
-    () =>
-      overpassAttempts.reduce(
-        (max, attempt) => Math.max(max, attempt.index),
-        -1,
-      ),
-    [overpassAttempts],
-  );
-
-  useEffect(() => {
-    if (!exporting) {
-      return;
-    }
-    // Restart soft budget whenever failover advances currentAttemptIndex.
-    setRemainingSeconds(
-      currentAttemptIndex >= -1 ? OVERPASS_CLIENT_TIMEOUT_SECONDS : 0,
-    );
-    const intervalId = window.setInterval(() => {
-      setRemainingSeconds((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => window.clearInterval(intervalId);
-  }, [exporting, currentAttemptIndex]);
+  const remainingSeconds = useOverpassAttemptCountdown({
+    active: exporting,
+    attempts: overpassAttempts,
+  });
 
   useEffect(
     () => () => {
@@ -131,7 +116,7 @@ export function useExportPlacesByGeometry({
             setError("No places matched this geometry. Try a different type.");
             return;
           }
-          downloadPlacesCsv(prepared);
+          csvDownloader.download(prepared);
           onExported?.(geometryType);
           onClose();
         })
@@ -153,7 +138,7 @@ export function useExportPlacesByGeometry({
           setOverpassAttempts([]);
         });
     },
-    [criteria, exporting, onClose, onExported, placeExport],
+    [criteria, csvDownloader, exporting, onClose, onExported, placeExport],
   );
 
   return {

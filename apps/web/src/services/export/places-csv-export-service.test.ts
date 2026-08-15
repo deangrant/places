@@ -4,7 +4,7 @@ import {
   escapeCsvField,
   mapPlaceToExportRow,
   PLACE_CSV_COLUMNS,
-} from "@/services/export/places-csv-export";
+} from "@/services/export/places-csv-export-service";
 import type { Place } from "@/types/places.types";
 
 /** Unneutralized formula cell starting a field (CSV injection regression). */

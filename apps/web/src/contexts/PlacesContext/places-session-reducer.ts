@@ -1,6 +1,6 @@
-import { mergeOverpassAttempt } from "@/services/overpass/merge-overpass-attempt";
-import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client";
+import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client-service";
 import type { BBox, Place } from "@/types/places.types";
+import { mergeOverpassAttempt } from "@/utils/merge-overpass-attempt";
 
 /**
  * Search/session slice for PlacesProvider (selection, results, loading, errors).

@@ -4,11 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 import { PlacesProvider, usePlaces } from "@/contexts/PlacesContext";
 import { ServicesProvider } from "@/contexts/ServicesContext";
 import type { AppServices } from "@/services/app-services.types";
+import type { IPlaceGeometryExporter } from "@/services/places/place-geometry-export-service";
+import type { IPlaceSearchService } from "@/services/places/place-search-service";
 import type {
-  IPlaceGeometryExporter,
-  IPlaceSearchService,
-} from "@/services/places/place-search-service";
-import type { Place, PlaceSearchResult } from "@/types/places.types";
+  Place,
+  PlaceSearchCriteria,
+  PlaceSearchResult,
+} from "@/types/places.types";
 
 function makePlace(overrides: Partial<Place> & Pick<Place, "id">): Place {
   return {
@@ -49,7 +51,6 @@ function createWrapper(placeSearch: IPlaceSearchService) {
       list: () => [],
       listByTopCategory: () => [],
       listTopCategories: () => [],
-      matchTags: () => undefined,
     },
   };
   return function Wrapper({ children }: { children: ReactNode }) {
@@ -190,9 +191,9 @@ describe("PlacesProvider", () => {
   it("cancels an in-flight search and clears loading without an error", async () => {
     let capturedSignal: AbortSignal | undefined;
     const placeSearch: IPlaceSearchService = {
-      search: vi.fn((_criteria, signal) => {
+      search: vi.fn((_criteria: PlaceSearchCriteria, signal?: AbortSignal) => {
         capturedSignal = signal;
-        return new Promise((_resolve, reject) => {
+        return new Promise<PlaceSearchResult>((_resolve, reject) => {
           if (signal?.aborted) {
             reject(
               new DOMException("The operation was aborted.", "AbortError"),

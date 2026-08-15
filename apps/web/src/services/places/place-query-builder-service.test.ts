@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   PlaceQueryBuilder,
   toOverpassAreaId,
-} from "@/services/places/place-query-builder";
-import type { ICategoryLookup } from "@/services/taxonomy/category-taxonomy";
+} from "@/services/places/place-query-builder-service";
+import type { ICategoryLookup } from "@/services/taxonomy/category-taxonomy-service";
 import type { CategoryDefinition } from "@/types/places.types";
 
 const NODE_TYPE_ERROR = /relation or way/i;

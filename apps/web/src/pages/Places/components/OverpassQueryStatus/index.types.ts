@@ -1,4 +1,4 @@
-import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client";
+import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client-service";
 
 /**
  * Props for the Overpass query status list shown under loaders.

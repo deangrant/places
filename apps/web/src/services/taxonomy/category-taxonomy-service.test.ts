@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CategoryTaxonomy } from "@/services/taxonomy/category-taxonomy";
+import { CategoryTaxonomy } from "@/services/taxonomy/category-taxonomy-service";
 
 describe("CategoryTaxonomy", () => {
   const taxonomy = new CategoryTaxonomy();

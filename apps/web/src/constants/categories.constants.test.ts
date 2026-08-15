@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CATEGORY_DEFINITIONS } from "@/constants/categories.constants";
-import { formatCategoryLabel } from "@/services/taxonomy/category-taxonomy";
+import { formatCategoryLabel } from "@/services/taxonomy/category-taxonomy-service";
 
 describe("CATEGORY_DEFINITIONS Strong v1", () => {
   it("meets Strong v1 size floors", () => {

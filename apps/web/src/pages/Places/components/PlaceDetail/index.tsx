@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { Badge } from "@/components/core/Badge";
 import { Button } from "@/components/core/Button";
-import { usePlaces } from "@/contexts/PlacesContext";
+import { usePlacesSelection } from "@/contexts/PlacesContext";
 import { osmPermalink } from "@/utils/osm-permalink";
 import { safeHttpUrl } from "@/utils/safe-http-url";
 import { safeTelHref } from "@/utils/safe-tel-href";
@@ -10,7 +10,7 @@ import type { DetailProps } from "./index.types";
 
 /** Detail pane for the selected Place record. */
 export function PlaceDetail() {
-  const { selectedPlace, selectPlace } = usePlaces();
+  const { selectedPlace, selectPlace } = usePlacesSelection();
 
   const handleBack = useCallback(() => {
     selectPlace(null);

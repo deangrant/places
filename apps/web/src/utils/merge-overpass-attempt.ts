@@ -1,4 +1,4 @@
-import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client";
+import type { OverpassAttemptEvent } from "@/services/overpass/overpass-http-client-service";
 
 /**
  * Merges an Overpass attempt event into the attempt list by endpoint index.

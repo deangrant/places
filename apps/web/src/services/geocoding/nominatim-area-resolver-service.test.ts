@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { NominatimAreaResolver } from "@/services/geocoding/nominatim-area-resolver";
+import { NominatimAreaResolver } from "@/services/geocoding/nominatim-area-resolver-service";
 
 const HTTP_503_ERROR = /Location search failed \(HTTP 503\)/;
 
