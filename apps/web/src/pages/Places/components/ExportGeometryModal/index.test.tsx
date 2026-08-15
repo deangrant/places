@@ -19,6 +19,7 @@ import type { Place } from "@/types/places.types";
 
 const downloadPlacesCsv = vi.hoisted(() => vi.fn());
 const EXPORT_BUTTON = /^export$/i;
+const CANCEL_BUTTON = /^cancel$/i;
 
 vi.mock("@/services/export/places-csv-export", () => ({
   downloadPlacesCsv,
@@ -53,6 +54,29 @@ const place: Place = {
   website: null,
 };
 
+/**
+ * Resolves only when the provided abort signal fires.
+ */
+function hangUntilAborted(
+  _criteria: unknown,
+  _geometryType: unknown,
+  signal?: AbortSignal,
+): Promise<Place[]> {
+  return new Promise((_resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException("The operation was aborted.", "AbortError"));
+      return;
+    }
+    signal?.addEventListener(
+      "abort",
+      () => {
+        reject(new DOMException("The operation was aborted.", "AbortError"));
+      },
+      { once: true },
+    );
+  });
+}
+
 function renderModal(
   onClose = vi.fn(),
   onExported = vi.fn(),
@@ -60,6 +84,7 @@ function renderModal(
   onClose: ReturnType<typeof vi.fn>;
   onExported: ReturnType<typeof vi.fn>;
   placeExport: IPlaceGeometryExporter;
+  unmount: () => void;
 } {
   const placeExport: IPlaceGeometryExporter = {
     exportByGeometry: vi.fn(() => Promise.resolve([place])),
@@ -91,13 +116,13 @@ function renderModal(
     );
   }
 
-  render(
+  const view = render(
     <Wrapper>
       <ExportGeometryModal onClose={onClose} onExported={onExported} open />
     </Wrapper>,
   );
 
-  return { onClose, onExported, placeExport };
+  return { onClose, onExported, placeExport, unmount: view.unmount };
 }
 
 describe("ExportGeometryModal", () => {
@@ -139,5 +164,68 @@ describe("ExportGeometryModal", () => {
       expect.any(Function),
     );
     expect(downloadPlacesCsv).toHaveBeenCalledWith([]);
+  });
+
+  it("cancels an in-flight export from the overlay and restores the picker", async () => {
+    const { onClose, onExported, placeExport } = renderModal();
+    let capturedSignal: AbortSignal | undefined;
+    vi.mocked(placeExport.exportByGeometry).mockImplementation(
+      (_criteria, _geometryType, signal) => {
+        capturedSignal = signal;
+        return hangUntilAborted(_criteria, _geometryType, signal);
+      },
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "POINT" }));
+    fireEvent.click(screen.getByRole("button", { name: EXPORT_BUTTON }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Preparing export. Please wait..."),
+      ).toBeInTheDocument();
+    });
+
+    const cancelButtons = screen.getAllByRole("button", {
+      name: CANCEL_BUTTON,
+    });
+    const overlayCancel = cancelButtons.find(
+      (button) => !(button as HTMLButtonElement).disabled,
+    );
+    expect(overlayCancel).toBeDefined();
+    fireEvent.click(overlayCancel as HTMLButtonElement);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("dialog", { name: "Export places" }),
+      ).toBeVisible();
+    });
+    expect(capturedSignal?.aborted).toBe(true);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onExported).not.toHaveBeenCalled();
+    expect(downloadPlacesCsv).not.toHaveBeenCalled();
+  });
+
+  it("aborts an in-flight export when the modal unmounts", async () => {
+    const { placeExport, unmount } = renderModal();
+    let capturedSignal: AbortSignal | undefined;
+    vi.mocked(placeExport.exportByGeometry).mockImplementation(
+      (_criteria, _geometryType, signal) => {
+        capturedSignal = signal;
+        return hangUntilAborted(_criteria, _geometryType, signal);
+      },
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "POINT" }));
+    fireEvent.click(screen.getByRole("button", { name: EXPORT_BUTTON }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Preparing export. Please wait..."),
+      ).toBeInTheDocument();
+    });
+
+    unmount();
+
+    expect(capturedSignal?.aborted).toBe(true);
   });
 });

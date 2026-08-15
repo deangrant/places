@@ -39,6 +39,7 @@ let mockValue: PlacesContextValue;
 function stubPlaces(partial: Partial<PlacesContextValue>): void {
   mockValue = {
     boundsToFit: null,
+    cancelSearch: vi.fn(),
     clearBoundsToFit: vi.fn(),
     criteria: {},
     error: null,

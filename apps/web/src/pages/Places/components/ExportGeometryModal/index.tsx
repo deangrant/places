@@ -57,6 +57,7 @@ export function ExportGeometryModal({
   );
   const {
     canExport,
+    cancelExport,
     error,
     exporting,
     handleExport,
@@ -209,6 +210,9 @@ export function ExportGeometryModal({
                   Up to {formatCountdown(remainingSeconds)} remaining
                 </p>
                 <OverpassQueryStatus attempts={overpassAttempts} />
+                <Button onClick={cancelExport} variant="ghost">
+                  Cancel
+                </Button>
               </div>
             </div>,
             document.body,

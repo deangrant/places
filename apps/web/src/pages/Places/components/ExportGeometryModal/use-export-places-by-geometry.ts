@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { OVERPASS_CLIENT_TIMEOUT_SECONDS } from "@/constants/api.constants";
 import { mergeOverpassAttempt } from "@/pages/Places/utils/merge-overpass-attempt";
 import {
@@ -31,6 +31,8 @@ export interface UseExportPlacesByGeometryOptions {
  * Result of the geometry CSV export hook for the export modal.
  */
 export interface UseExportPlacesByGeometryResult {
+  /** Aborts the in-flight export and returns to the picker. */
+  cancelExport: () => void;
   /** True when export is allowed for the current selection. */
   canExport: (selectedGeometry: PlaceGeometryType[]) => boolean;
   /** Last export error message, or null. */
@@ -63,6 +65,7 @@ export function useExportPlacesByGeometry({
   const [overpassAttempts, setOverpassAttempts] = useState<
     OverpassAttemptEvent[]
   >([]);
+  const abortRef = useRef<AbortController | null>(null);
 
   const currentAttemptIndex = useMemo(
     () =>
@@ -87,6 +90,17 @@ export function useExportPlacesByGeometry({
     return () => window.clearInterval(intervalId);
   }, [exporting, currentAttemptIndex]);
 
+  useEffect(
+    () => () => {
+      abortRef.current?.abort();
+    },
+    [],
+  );
+
+  const cancelExport = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
+
   const canExport = useCallback(
     (selectedGeometry: PlaceGeometryType[]) =>
       selectedGeometry.length > 0 && !exporting,
@@ -103,6 +117,7 @@ export function useExportPlacesByGeometry({
       setError(null);
       setOverpassAttempts([]);
       const controller = new AbortController();
+      abortRef.current = controller;
       const effectiveType = resolveEffectiveGeometryType(selectedGeometry);
 
       preparePlacesForGeometryExport(
@@ -136,6 +151,9 @@ export function useExportPlacesByGeometry({
           setError(message);
         })
         .finally(() => {
+          if (abortRef.current === controller) {
+            abortRef.current = null;
+          }
           setExporting(false);
           setOverpassAttempts([]);
         });
@@ -144,6 +162,7 @@ export function useExportPlacesByGeometry({
   );
 
   return {
+    cancelExport,
     canExport,
     error,
     exporting,

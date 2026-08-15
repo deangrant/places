@@ -168,4 +168,51 @@ describe("PlacesProvider", () => {
     expect(result.current.places).toEqual([]);
     expect(result.current.error).toBe("boom");
   });
+
+  it("cancels an in-flight search and clears loading without an error", async () => {
+    let capturedSignal: AbortSignal | undefined;
+    const placeSearch: IPlaceSearchService = {
+      search: vi.fn((_criteria, signal) => {
+        capturedSignal = signal;
+        return new Promise((_resolve, reject) => {
+          if (signal?.aborted) {
+            reject(
+              new DOMException("The operation was aborted.", "AbortError"),
+            );
+            return;
+          }
+          signal?.addEventListener(
+            "abort",
+            () => {
+              reject(
+                new DOMException("The operation was aborted.", "AbortError"),
+              );
+            },
+            { once: true },
+          );
+        });
+      }),
+    };
+
+    const { result } = renderHook(() => usePlaces(), {
+      wrapper: createWrapper(placeSearch),
+    });
+
+    let searchPromise!: Promise<void>;
+    act(() => {
+      searchPromise = result.current.runSearch();
+    });
+
+    expect(result.current.loading).toBe(true);
+
+    await act(async () => {
+      result.current.cancelSearch();
+      await searchPromise;
+    });
+
+    expect(capturedSignal?.aborted).toBe(true);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBeNull();
+    expect(result.current.places).toEqual([]);
+  });
 });

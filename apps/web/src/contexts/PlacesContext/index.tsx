@@ -168,9 +168,14 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
     }
   }, [criteria]);
 
+  const cancelSearch = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
+
   const value = useMemo(
     (): PlacesContextValue => ({
       boundsToFit: session.boundsToFit,
+      cancelSearch,
       clearBoundsToFit,
       criteria,
       error: session.error,
@@ -188,6 +193,7 @@ export function PlacesProvider({ children }: PlacesProviderProps) {
       truncated: session.truncated,
     }),
     [
+      cancelSearch,
       clearBoundsToFit,
       criteria,
       fitResultsBounds,

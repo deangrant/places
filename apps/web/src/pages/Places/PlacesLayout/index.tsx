@@ -1,4 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/core/Button";
 import { Spinner } from "@/components/core/Spinner";
 import { OVERPASS_CLIENT_TIMEOUT_SECONDS } from "@/constants/api.constants";
 import { usePlaces } from "@/contexts/PlacesContext";
@@ -14,6 +15,7 @@ import styles from "./index.module.css";
 export function PlacesLayout() {
   const {
     boundsToFit,
+    cancelSearch,
     clearBoundsToFit,
     fitResultsBounds,
     mapView,
@@ -125,6 +127,9 @@ export function PlacesLayout() {
               Up to {formatCountdown(remainingSeconds)} remaining
             </p>
             <OverpassQueryStatus attempts={overpassAttempts} />
+            <Button onClick={cancelSearch} variant="ghost">
+              Cancel
+            </Button>
           </div>
         </div>
       ) : null}

@@ -21,6 +21,8 @@ export interface PlacesProviderProps {
 export interface PlacesContextValue {
   /** Bounding box the map should fit, or null when idle. */
   boundsToFit: BBox | null;
+  /** Aborts the in-flight search and clears the loading overlay. */
+  cancelSearch: () => void;
   /** Clears a pending map fit request. */
   clearBoundsToFit: () => void;
   /** Active search filter criteria. */
