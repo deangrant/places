@@ -229,6 +229,10 @@ describe("ExportGeometryModal", () => {
     expect(onClose).not.toHaveBeenCalled();
     expect(onExported).not.toHaveBeenCalled();
     expect(downloadPlacesCsv).not.toHaveBeenCalled();
+    const exportButton = screen.getByRole("button", { name: EXPORT_BUTTON });
+    expect(exportButton).toBeEnabled();
+    exportButton.focus();
+    expect(document.activeElement).toBe(exportButton);
   });
 
   it("aborts an in-flight export when the modal unmounts", async () => {

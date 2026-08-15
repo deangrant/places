@@ -172,7 +172,7 @@ export class PlaceQueryBuilder implements IPlaceQueryBuilder {
     if (!trimmed) {
       return "";
     }
-    const pattern = escapeRegex(trimmed);
+    const pattern = escapeOverpass(escapeRegex(trimmed));
     return `["brand"~"^${pattern}$",i]`;
   }
 
@@ -185,7 +185,7 @@ export class PlaceQueryBuilder implements IPlaceQueryBuilder {
     if (!trimmed) {
       return "";
     }
-    const pattern = escapeRegex(trimmed);
+    const pattern = escapeOverpass(escapeRegex(trimmed));
     return `["name"~"${pattern}",i]`;
   }
 }

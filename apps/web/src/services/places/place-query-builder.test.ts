@@ -9,6 +9,16 @@ import type { CategoryDefinition } from "@/types/places.types";
 const NODE_TYPE_ERROR = /relation or way/i;
 const MISSING_SCOPE_ERROR = /area or bounding box/i;
 
+/** Mirrors PlaceQueryBuilder Overpass string escaping for assertions. */
+function escapeOverpass(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+/** Mirrors PlaceQueryBuilder regex escaping for assertions. */
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 const coffee: CategoryDefinition = {
   id: "coffee-shops",
   subCategory: "Coffee Shops",
@@ -96,9 +106,29 @@ describe("PlaceQueryBuilder", () => {
       },
       { areaId: 1 },
     );
-    expect(ql).toContain('["brand"~"^A\\.B\\*C\\?$",i]');
-    expect(ql).toContain('["name"~"foo\\.bar",i]');
+    expect(ql).toContain(
+      `["brand"~"^${escapeOverpass(escapeRegex("A.B*C?"))}$",i]`,
+    );
+    expect(ql).toContain(
+      `["name"~"${escapeOverpass(escapeRegex("foo.bar"))}",i]`,
+    );
     expect(ql).toContain('nwr["amenity"="cof\\"fee"]');
+  });
+
+  it("escapes quotes and backslashes in brand and name regex literals", () => {
+    const brand = 'A\\"B.$';
+    const name = 'x"y\\z+';
+    const ql = builder.build(
+      {
+        brand,
+        nameContains: name,
+      },
+      { areaId: 1 },
+    );
+    expect(ql).toContain(
+      `["brand"~"^${escapeOverpass(escapeRegex(brand))}$",i]`,
+    );
+    expect(ql).toContain(`["name"~"${escapeOverpass(escapeRegex(name))}",i]`);
   });
 
   it("escapes taxonomy and OSM tag keys inside Overpass string literals", () => {
