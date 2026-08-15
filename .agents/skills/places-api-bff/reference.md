@@ -8,14 +8,14 @@ Use stable URIs under a Places docs base (adjust host when public docs exist):
 | --- | --- | --- |
 | `/errors/bad-request` | 400 | Malformed JSON or unreadable body |
 | `/errors/payload-too-large` | 413 | Body exceeds size cap |
-| `/errors/validation` | 422 | Semantic field validation failed |
+| `/errors/validation` | 422 | Semantic field validation failed (including unknown `categoryId`, missing filters, unresolvable location, unsupported OSM tags) |
 | `/errors/not-found` | 404 | Unknown route |
 | `/errors/method-not-allowed` | 405 | Wrong verb for path |
 | `/errors/rate-limited` | 429 | Per-IP Places quota exceeded |
 | `/errors/service-unavailable` | 503 | Per-IP concurrent Places cap exceeded |
 | `/errors/upstream-timeout` | 504 | Nominatim/Overpass client timeout |
 | `/errors/upstream-unavailable` | 502 | Upstream failed after retries/failover |
-| `/errors/upstream-rejected` | 502 | Upstream returned non-retryable error |
+| `/errors/upstream-rejected` | 502 | Upstream returned non-retryable error (not client validation) |
 | `/errors/internal` | 500 | Unexpected server failure |
 
 Example validation body:
@@ -49,6 +49,11 @@ Example validation body:
 | Upstream failure | 502 |
 
 Never return `200` with an error object.
+
+Domain/client validation failures (unknown category, missing filters, bad
+OSM tags, unresolvable location) **must** be **422** `/validation`, not
+**502**. Reserve **502**/**504** for true Nominatim/Overpass outages and
+timeouts.
 
 Rate-limit responses **must** include `Retry-After`, `RateLimit-Limit`,
 `RateLimit-Remaining`, and `RateLimit-Reset`.

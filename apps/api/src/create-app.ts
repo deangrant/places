@@ -3,6 +3,7 @@ import { OVERPASS_CLIENT_TIMEOUT_SECONDS } from "places-core";
 import type { ApiConfig } from "./config.js";
 import type { ApiServices } from "./create-services.js";
 import { applyCors } from "./http/cors.js";
+import { mapDomainError } from "./http/map-domain-error.js";
 import {
   parseJsonBody,
   problem,
@@ -19,12 +20,6 @@ import {
   validatePlaceExportBody,
   validatePlaceSearchCriteria,
 } from "./validation/places-body.js";
-
-const TIMEOUT_MESSAGE = /timed out|timeout/i;
-const UPSTREAM_UNAVAILABLE_MESSAGE =
-  /rate-limiting|Could not reach the Overpass|Location search failed/i;
-const VALIDATION_MESSAGE =
-  /Choose a category|Set a country|Could not resolve|Set both OSM|Unsupported OSM/i;
 
 /**
  * Creates the Node request listener for the Places API.
@@ -273,37 +268,6 @@ function isPayloadTooLarge(error: unknown): boolean {
     "code" in error &&
     (error as { code?: string }).code === "PAYLOAD_TOO_LARGE"
   );
-}
-
-function mapDomainError(error: unknown) {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "problem" in error &&
-    error.problem
-  ) {
-    return (error as { problem: ReturnType<typeof problem> }).problem;
-  }
-
-  const message =
-    error instanceof Error ? error.message : "Unexpected server failure.";
-
-  if (TIMEOUT_MESSAGE.test(message)) {
-    return problem(504, "Upstream timeout", message, "/upstream-timeout");
-  }
-  if (UPSTREAM_UNAVAILABLE_MESSAGE.test(message)) {
-    return problem(
-      502,
-      "Upstream unavailable",
-      message,
-      "/upstream-unavailable",
-    );
-  }
-  if (VALIDATION_MESSAGE.test(message)) {
-    return problem(422, "Validation failed", message, "/validation");
-  }
-
-  return problem(502, "Upstream rejected", message, "/upstream-rejected");
 }
 
 function mapUnexpectedError(error: unknown) {

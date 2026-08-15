@@ -14,7 +14,7 @@ const EMPTY_SEARCH_RESULT: PlaceSearchResult = {
 };
 
 const SEARCH_BODY = JSON.stringify({
-  categoryId: "cafe",
+  categoryId: "coffee-shops",
   city: "Seattle",
   countryCode: "us",
 });

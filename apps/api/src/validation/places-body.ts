@@ -1,8 +1,9 @@
 import type { PlaceGeometryType, PlaceSearchCriteria } from "places-core";
-import { isAllowedOsmTagKey } from "places-core";
+import { CategoryTaxonomy, isAllowedOsmTagKey } from "places-core";
 import { type ProblemDetails, problem } from "../http/problem.js";
 
 const COUNTRY_CODE_PATTERN = /^[A-Za-z]{2}$/;
+const categoryTaxonomy = new CategoryTaxonomy();
 
 const GEOMETRY_TYPES = new Set<PlaceGeometryType>([
   "POINT",
@@ -72,6 +73,14 @@ export function validatePlaceSearchCriteria(body: unknown): CriteriaValidation {
   assignOptionalString(body, "osmTagKey", criteria, errors);
   assignOptionalString(body, "osmTagValue", criteria, errors);
   assignOptionalString(body, "region", criteria, errors);
+
+  if (
+    criteria.categoryId &&
+    !errors.categoryId &&
+    !categoryTaxonomy.getById(criteria.categoryId)
+  ) {
+    errors.categoryId = [`unknown category id: ${criteria.categoryId}`];
+  }
 
   if (
     criteria.countryCode &&
