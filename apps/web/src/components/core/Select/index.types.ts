@@ -14,6 +14,12 @@ export interface SelectOption {
 export interface SelectProps {
   /** Accessible name when a visible label is absent. */
   "aria-label"?: string;
+  /**
+   * When true, shows an inline clear control while a value is selected.
+   */
+  clearable?: boolean;
+  /** Accessible name for the clear control; defaults to `"Clear"`. */
+  clearLabel?: string;
   /** Disables selection. */
   disabled?: boolean;
   /** Optional id forwarded to the trigger for FormField labeling. */

@@ -109,6 +109,21 @@ export function SearchFilters() {
 
   const advancedActiveCount = advancedChips.length;
 
+  const filtersDirty = useMemo(() => {
+    const hasText = (value: string | undefined) => Boolean(value?.trim());
+    return (
+      hasText(criteria.brand) ||
+      hasText(criteria.nameContains) ||
+      Boolean(criteria.countryCode) ||
+      hasText(criteria.region) ||
+      hasText(criteria.city) ||
+      Boolean(criteria.categoryId) ||
+      Boolean(criteria.osmTagKey) ||
+      hasText(criteria.osmTagValue) ||
+      Boolean(selectedTop)
+    );
+  }, [criteria, selectedTop]);
+
   const handleBrandChange = useCallback(
     (value: string) => {
       setCriteria({ brand: value });
@@ -193,12 +208,20 @@ export function SearchFilters() {
     setAdvancedOpen((open) => !open);
   }, []);
 
+  const handleReset = useCallback(() => {
+    setCriteria(() => ({}));
+    setSelectedTop("");
+    setAdvancedOpen(false);
+  }, [setCriteria]);
+
   return (
     <section aria-label="Place filters" className={styles.root}>
       <div className={styles.primaryRow}>
         <FormField htmlFor="brand" label="Brand">
           <div title="Exact OSM brand match.">
             <Input
+              clearable
+              clearLabel="Clear brand"
               id="brand"
               onChange={handleBrandChange}
               onKeyDown={handleSearchKeyDown}
@@ -210,6 +233,8 @@ export function SearchFilters() {
 
         <FormField htmlFor="name" label="Place name">
           <Input
+            clearable
+            clearLabel="Clear place name"
             id="name"
             onChange={handleNameChange}
             onKeyDown={handleSearchKeyDown}
@@ -221,6 +246,8 @@ export function SearchFilters() {
         <FormField htmlFor="country" label="Country">
           <div title="Curated country list — not every ISO code.">
             <Select
+              clearable
+              clearLabel="Clear country"
               id="country"
               onChange={handleCountryChange}
               options={countryOptions}
@@ -232,6 +259,8 @@ export function SearchFilters() {
 
         <FormField htmlFor="region" label="State / region">
           <Input
+            clearable
+            clearLabel="Clear state / region"
             id="region"
             onChange={handleRegionChange}
             onKeyDown={handleSearchKeyDown}
@@ -242,6 +271,8 @@ export function SearchFilters() {
 
         <FormField htmlFor="city" label="City">
           <Input
+            clearable
+            clearLabel="Clear city"
             id="city"
             onChange={handleCityChange}
             onKeyDown={handleSearchKeyDown}
@@ -263,6 +294,15 @@ export function SearchFilters() {
             {advancedActiveCount > 0 ? (
               <span className={styles.badge}>{advancedActiveCount}</span>
             ) : null}
+          </Button>
+          <Button
+            className={styles.reset}
+            disabled={!filtersDirty || loading}
+            onClick={handleReset}
+            title="Clear all filters"
+            variant="ghost"
+          >
+            Reset
           </Button>
           <Button
             className={styles.search}
@@ -299,6 +339,8 @@ export function SearchFilters() {
           <div className={styles.advancedGrid}>
             <FormField htmlFor="category" label="Category">
               <Select
+                clearable
+                clearLabel="Clear category"
                 id="category"
                 onChange={handleTopCategoryChange}
                 options={topCategoryOptions}
@@ -310,6 +352,8 @@ export function SearchFilters() {
             {categoryValue ? (
               <FormField htmlFor="subcategory" label="Subcategory">
                 <Select
+                  clearable
+                  clearLabel="Clear subcategory"
                   id="subcategory"
                   onChange={handleSubcategoryChange}
                   options={subcategoryOptions}
@@ -321,6 +365,8 @@ export function SearchFilters() {
 
             <FormField htmlFor="osm-tag-key" label="Tag">
               <Select
+                clearable
+                clearLabel="Clear tag"
                 id="osm-tag-key"
                 onChange={handleOsmTagKeyChange}
                 options={osmTagKeyOptions}
@@ -332,6 +378,8 @@ export function SearchFilters() {
             {criteria.osmTagKey ? (
               <FormField htmlFor="osm-tag-value" label="Value">
                 <Input
+                  clearable
+                  clearLabel="Clear value"
                   id="osm-tag-value"
                   onChange={handleOsmTagValueChange}
                   onKeyDown={handleSearchKeyDown}

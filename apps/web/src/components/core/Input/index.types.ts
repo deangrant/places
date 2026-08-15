@@ -16,6 +16,12 @@ export interface InputProps {
   "aria-label"?: string;
   /** Browser autocomplete hint. */
   autoComplete?: string;
+  /**
+   * When true, shows an inline clear control while the value is non-empty.
+   */
+  clearable?: boolean;
+  /** Accessible name for the clear control; defaults to `"Clear"`. */
+  clearLabel?: string;
   /** Disables editing. */
   disabled?: boolean;
   /** Optional id forwarded to the input element. */

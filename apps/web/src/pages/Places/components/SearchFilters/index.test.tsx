@@ -227,4 +227,51 @@ describe("SearchFilters", () => {
       screen.queryByText("Exact OSM brand match."),
     ).not.toBeInTheDocument();
   });
+
+  it("disables Reset when pristine and clears all filters when pressed", () => {
+    const { getCriteria } = renderFilters();
+    const reset = screen.getByRole("button", { name: "Reset" });
+    expect(reset).toBeDisabled();
+
+    fireEvent.change(screen.getByPlaceholderText("e.g. Starbucks"), {
+      target: { value: "Starbucks" },
+    });
+    chooseSelectOption("Country", "United States");
+    expect(reset).toBeEnabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Advanced" }));
+    chooseSelectOption("Category", "Food Services");
+    expect(screen.getByLabelText("Subcategory")).toBeInTheDocument();
+
+    fireEvent.click(reset);
+    expect(getCriteria()).toEqual({});
+    expect(reset).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Advanced" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(screen.queryByLabelText("Category")).not.toBeInTheDocument();
+  });
+
+  it("clears one field without wiping siblings", () => {
+    const { getCriteria } = renderFilters();
+    fireEvent.change(screen.getByPlaceholderText("e.g. Starbucks"), {
+      target: { value: "Starbucks" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("e.g. San Francisco"), {
+      target: { value: "Seattle" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear brand" }));
+    expect(getCriteria()).toMatchObject({
+      brand: "",
+      city: "Seattle",
+    });
+    expect(
+      screen.queryByRole("button", { name: "Clear brand" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Clear city" }),
+    ).toBeInTheDocument();
+  });
 });

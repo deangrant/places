@@ -4,6 +4,12 @@
   min-width: 0;
 }
 
+.triggerWrap {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
 .trigger {
   display: flex;
   gap: 0.5rem;
@@ -19,6 +25,10 @@
     border-color 140ms ease,
     background-color 140ms ease,
     box-shadow 160ms ease;
+}
+
+.triggerWithClear {
+  padding-right: 2.55rem;
 }
 
 .triggerLabel {
@@ -48,6 +58,43 @@
   opacity: 0.55;
 }
 
+.clear {
+  position: absolute;
+  top: 50%;
+  right: 1.55rem;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: 1.05rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  opacity: 0.85;
+  transform: translateY(-50%);
+  transition:
+    color 140ms ease,
+    opacity 140ms ease,
+    background-color 140ms ease;
+  animation: clearIn 140ms ease;
+}
+
+.clear:hover,
+.clear:focus-visible {
+  color: var(--color-text);
+  outline: none;
+  background: rgba(232, 220, 196, 0.12);
+  opacity: 1;
+}
+
 .chevron {
   flex: 0 0 auto;
   width: 0.45rem;
@@ -56,6 +103,16 @@
   border-bottom: 1.5px solid var(--color-text-muted);
   transform: translateY(-1px) rotate(45deg);
   transition: transform 160ms ease;
+}
+
+@keyframes clearIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 0.85;
+  }
 }
 
 .triggerOpen .chevron {

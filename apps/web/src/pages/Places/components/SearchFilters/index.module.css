@@ -63,6 +63,10 @@
   white-space: nowrap;
 }
 
+.reset {
+  white-space: nowrap;
+}
+
 .chips {
   display: flex;
   flex-wrap: wrap;
@@ -150,7 +154,8 @@
   }
 
   .search,
-  .advancedToggle {
+  .advancedToggle,
+  .reset {
     width: 100%;
     margin-left: 0;
   }

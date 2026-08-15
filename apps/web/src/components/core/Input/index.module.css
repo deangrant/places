@@ -1,3 +1,9 @@
+.wrap {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
 .root {
   width: 100%;
   padding: 0.55rem 0.7rem;
@@ -7,6 +13,10 @@
   transition: border-color 140ms ease;
 }
 
+.withClear {
+  padding-right: 2rem;
+}
+
 .root:hover,
 .root:focus {
   border-color: var(--color-border-strong);
@@ -14,4 +24,49 @@
 
 .root::placeholder {
   color: var(--color-text-muted);
+}
+
+.clear {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  font: inherit;
+  font-size: 1.05rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  opacity: 0.85;
+  transform: translateY(-50%);
+  transition:
+    color 140ms ease,
+    opacity 140ms ease,
+    background-color 140ms ease;
+  animation: clearIn 140ms ease;
+}
+
+.clear:hover,
+.clear:focus-visible {
+  color: var(--color-text);
+  outline: none;
+  background: rgba(232, 220, 196, 0.12);
+  opacity: 1;
+}
+
+@keyframes clearIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 0.85;
+  }
 }

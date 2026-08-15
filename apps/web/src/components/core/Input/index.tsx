@@ -15,6 +15,8 @@ export function Input({
   autoComplete,
   list,
   role,
+  clearable = false,
+  clearLabel = "Clear",
   "aria-label": ariaLabel,
   "aria-expanded": ariaExpanded,
   "aria-controls": ariaControls,
@@ -28,7 +30,13 @@ export function Input({
     [onChange],
   );
 
-  return (
+  const handleClear = useCallback(() => {
+    onChange("");
+  }, [onChange]);
+
+  const showClear = clearable && value.length > 0 && !disabled;
+
+  const input = (
     <input
       aria-activedescendant={ariaActivedescendant}
       aria-autocomplete={ariaAutocomplete}
@@ -36,7 +44,9 @@ export function Input({
       aria-expanded={ariaExpanded}
       aria-label={ariaLabel}
       autoComplete={autoComplete}
-      className={styles.root}
+      className={[styles.root, showClear ? styles.withClear : undefined]
+        .filter(Boolean)
+        .join(" ")}
       disabled={disabled}
       id={id}
       list={list}
@@ -48,5 +58,25 @@ export function Input({
       type={type}
       value={value}
     />
+  );
+
+  if (!clearable) {
+    return input;
+  }
+
+  return (
+    <div className={styles.wrap}>
+      {input}
+      {showClear ? (
+        <button
+          aria-label={clearLabel}
+          className={styles.clear}
+          onClick={handleClear}
+          type="button"
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+      ) : null}
+    </div>
   );
 }

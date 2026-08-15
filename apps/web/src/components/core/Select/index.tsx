@@ -20,6 +20,8 @@ export function Select({
   options,
   placeholder,
   disabled = false,
+  clearable = false,
+  clearLabel = "Clear",
   onChange,
   "aria-label": ariaLabel,
 }: SelectProps) {
@@ -64,6 +66,18 @@ export function Select({
     },
     [closeMenu, onChange],
   );
+
+  const handleClear = useCallback(
+    (event: ReactMouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onChange("");
+      closeMenu();
+    },
+    [closeMenu, onChange],
+  );
+
+  const showClear = clearable && Boolean(selected) && !disabled;
 
   useEffect(() => {
     if (!open) {
@@ -141,28 +155,41 @@ export function Select({
 
   return (
     <div className={styles.root} ref={rootRef}>
-      <button
-        aria-activedescendant={activeOptionId}
-        aria-controls={listId}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        aria-label={ariaLabel}
-        className={[
-          styles.trigger,
-          open ? styles.triggerOpen : undefined,
-          showingPlaceholder ? styles.triggerPlaceholder : undefined,
-        ]
-          .filter(Boolean)
-          .join(" ")}
-        disabled={disabled}
-        id={id}
-        onClick={handleTriggerClick}
-        onKeyDown={handleTriggerKeyDown}
-        type="button"
-      >
-        <span className={styles.triggerLabel}>{displayLabel}</span>
-        <span aria-hidden="true" className={styles.chevron} />
-      </button>
+      <div className={styles.triggerWrap}>
+        <button
+          aria-activedescendant={activeOptionId}
+          aria-controls={listId}
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          aria-label={ariaLabel}
+          className={[
+            styles.trigger,
+            open ? styles.triggerOpen : undefined,
+            showingPlaceholder ? styles.triggerPlaceholder : undefined,
+            showClear ? styles.triggerWithClear : undefined,
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          disabled={disabled}
+          id={id}
+          onClick={handleTriggerClick}
+          onKeyDown={handleTriggerKeyDown}
+          type="button"
+        >
+          <span className={styles.triggerLabel}>{displayLabel}</span>
+          <span aria-hidden="true" className={styles.chevron} />
+        </button>
+        {showClear ? (
+          <button
+            aria-label={clearLabel}
+            className={styles.clear}
+            onClick={handleClear}
+            type="button"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        ) : null}
+      </div>
 
       {open ? (
         <ul className={styles.list} id={listId} role="listbox">

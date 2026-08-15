@@ -13,10 +13,14 @@ const OPTIONS = [
 ];
 
 function ControlledSelect({
+  clearable,
+  clearLabel,
   disabled,
   initial = "",
   onChange = vi.fn(),
 }: {
+  clearable?: boolean;
+  clearLabel?: string;
   disabled?: boolean;
   initial?: string;
   onChange?: (value: string) => void;
@@ -24,6 +28,8 @@ function ControlledSelect({
   const [value, setValue] = useState(initial);
   return (
     <Select
+      clearable={clearable}
+      clearLabel={clearLabel}
       disabled={disabled}
       id="demo"
       onChange={(next) => {
@@ -86,5 +92,42 @@ describe("Select", () => {
     expect(screen.getByRole("listbox")).toBeInTheDocument();
     fireEvent.keyDown(trigger, { key: "Escape" });
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("omits the clear control when empty or not clearable", () => {
+    const { rerender } = render(<ControlledSelect clearable />);
+    expect(
+      screen.queryByRole("button", { name: "Clear" }),
+    ).not.toBeInTheDocument();
+
+    rerender(<ControlledSelect clearable={false} initial="b" />);
+    expect(
+      screen.queryByRole("button", { name: "Clear" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("clears the value without leaving the menu open", () => {
+    const onChange = vi.fn();
+    render(
+      <ControlledSelect
+        clearable
+        clearLabel="Clear country"
+        initial="b"
+        onChange={onChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Beta" }));
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear country" }));
+    expect(onChange).toHaveBeenCalledWith("");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Pick one" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Clear country" }),
+    ).not.toBeInTheDocument();
   });
 });
