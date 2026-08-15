@@ -6,7 +6,12 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { MapControls } from "@/pages/Places/components/MapControls";
 import styles from "./index.module.css";
 import type { MapViewProps } from "./index.types";
-import { isGeoJsonSource, nearlyEqual, placesToGeoJson } from "./map-helpers";
+import {
+  isGeoJsonSource,
+  nearlyEqual,
+  placesForMapSource,
+  placesToGeoJson,
+} from "./map-helpers";
 import {
   addPlacesMapLayers,
   PLACES_CLUSTERS_LAYER_ID,
@@ -233,9 +238,7 @@ export function MapView({
         return;
       }
 
-      const visiblePlaces = selectedPlaceId
-        ? places.filter((place) => place.id === selectedPlaceId)
-        : places;
+      const visiblePlaces = placesForMapSource(places, selectedPlaceId);
 
       placesSource.setData(placesToGeoJson(visiblePlaces, selectedPlaceId));
     };

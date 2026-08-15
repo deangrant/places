@@ -88,6 +88,34 @@ describe("validatePlaceSearchCriteria", () => {
       );
     }
   });
+
+  it.each([
+    {
+      body: { countryCode: "us", unexpected: true },
+      field: "unexpected",
+      message: "is not an allowed property",
+      name: "unknown top-level key",
+    },
+    {
+      body: { categoryId: "coffee-shops", countryCode: "USA" },
+      field: "countryCode",
+      message: "must be a 2-letter ISO country code",
+      name: "non-ISO country code",
+    },
+    {
+      body: { countryCode: "1" },
+      field: "countryCode",
+      message: "must be a 2-letter ISO country code",
+      name: "too-short country code",
+    },
+  ])("rejects $name", ({ body, field, message }) => {
+    const result = validatePlaceSearchCriteria(body);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.problem.status).toBe(422);
+      expect(result.problem.errors?.[field]?.[0]).toBe(message);
+    }
+  });
 });
 
 describe("validatePlaceExportBody", () => {
@@ -105,6 +133,44 @@ describe("validatePlaceExportBody", () => {
       expect(result.problem.errors?.categoryId?.[0]).toContain(
         "unknown category id",
       );
+    }
+  });
+
+  it.each([
+    {
+      body: {
+        criteria: { countryCode: "us" },
+        extra: 1,
+        geometryType: "POINT",
+      },
+      field: "extra",
+      message: "is not an allowed property",
+      name: "unknown top-level key",
+    },
+    {
+      body: {
+        criteria: { countryCode: "us", unexpected: true },
+        geometryType: "POINT",
+      },
+      field: "unexpected",
+      message: "is not an allowed property",
+      name: "unknown nested criteria key",
+    },
+    {
+      body: {
+        criteria: { countryCode: "us" },
+        geometryType: "LINESTRING",
+      },
+      field: "geometryType",
+      message: "must be POINT, POLYGON, or MULTIPOLYGON",
+      name: "invalid geometryType enum",
+    },
+  ])("rejects $name", ({ body, field, message }) => {
+    const result = validatePlaceExportBody(body);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.problem.status).toBe(422);
+      expect(result.problem.errors?.[field]?.[0]).toBe(message);
     }
   });
 });

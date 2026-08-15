@@ -1,6 +1,10 @@
 import type { PlaceSearchCriteria } from "places-core";
+import { OVERPASS_CLIENT_TIMEOUT_SECONDS } from "places-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { HttpPlacesApiClient } from "./http-places-api-client.js";
+import {
+  HttpPlacesApiClient,
+  resolveApiBaseUrl,
+} from "./http-places-api-client.js";
 
 const criteria: PlaceSearchCriteria = {
   city: "Seattle",
@@ -8,6 +12,7 @@ const criteria: PlaceSearchCriteria = {
 };
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -17,13 +22,14 @@ function hangingFetch(
   init?: RequestInit,
 ): Promise<Response> {
   return new Promise<Response>((_resolve, reject) => {
-    init?.signal?.addEventListener(
-      "abort",
-      () => {
-        reject(new DOMException("The operation was aborted.", "AbortError"));
-      },
-      { once: true },
-    );
+    const rejectAborted = () => {
+      reject(new DOMException("The operation was aborted.", "AbortError"));
+    };
+    if (init?.signal?.aborted) {
+      rejectAborted();
+      return;
+    }
+    init?.signal?.addEventListener("abort", rejectAborted, { once: true });
   });
 }
 
@@ -116,5 +122,55 @@ describe("HttpPlacesApiClient response shape", () => {
     await expect(client.exportByGeometry(criteria, "POINT")).rejects.toThrow(
       /Deploy the web app and API from the same revision/,
     );
+  });
+});
+
+describe("HttpPlacesApiClient errors", () => {
+  it("surfaces problem+json detail on non-OK responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json(
+          {
+            detail: "Set a country before searching.",
+            status: 422,
+            title: "Validation failed",
+            type: "https://places.local/errors/validation",
+          },
+          {
+            headers: { "Content-Type": "application/problem+json" },
+            status: 422,
+          },
+        ),
+      ),
+    );
+    const client = new HttpPlacesApiClient("http://api.test");
+    await expect(client.search(criteria)).rejects.toThrow(
+      "Set a country before searching.",
+    );
+  });
+
+  it("maps aborted timeout signals to a timeout message", async () => {
+    const timeout = new AbortController();
+    timeout.abort();
+    vi.spyOn(AbortSignal, "timeout").mockReturnValue(timeout.signal);
+    vi.stubGlobal("fetch", vi.fn(hangingFetch));
+
+    const client = new HttpPlacesApiClient("http://api.test");
+    await expect(client.search(criteria)).rejects.toThrow(
+      `Query timed out after about ${OVERPASS_CLIENT_TIMEOUT_SECONDS}s. Narrow the area or filters.`,
+    );
+  });
+});
+
+describe("resolveApiBaseUrl", () => {
+  it("throws when VITE_API_BASE_URL is missing or blank", () => {
+    vi.stubEnv("VITE_API_BASE_URL", "");
+    expect(() => resolveApiBaseUrl()).toThrow(/VITE_API_BASE_URL is required/);
+  });
+
+  it("returns the configured base URL", () => {
+    vi.stubEnv("VITE_API_BASE_URL", "http://api.example:8787");
+    expect(resolveApiBaseUrl()).toBe("http://api.example:8787");
   });
 });

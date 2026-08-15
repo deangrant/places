@@ -2,6 +2,21 @@ import type { GeoJSONSource, Source } from "mapbox-gl";
 import type { Place } from "@/types/places.types";
 
 /**
+ * Places written into the map GeoJSON source.
+ * When a place is selected, only that place remains (focus UX).
+ * @param places Search result places.
+ * @param selectedPlaceId Currently selected place id.
+ */
+export function placesForMapSource(
+  places: Place[],
+  selectedPlaceId: string | null,
+): Place[] {
+  return selectedPlaceId
+    ? places.filter((place) => place.id === selectedPlaceId)
+    : places;
+}
+
+/**
  * Builds point features for place markers.
  * @param places Search result places.
  * @param selectedPlaceId Currently selected place id.

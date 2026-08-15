@@ -243,6 +243,20 @@ describe("NominatimAreaResolver", () => {
     );
   });
 
+  it("throws a blocked-identity message on HTTP 403", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        status: 403,
+      })),
+    );
+    const resolver = new NominatimAreaResolver(TEST_CONTACT, TEST_ENDPOINT);
+    await expect(resolver.resolveAdmin({ countryCode: "US" })).rejects.toThrow(
+      /Location search was blocked by Nominatim \(HTTP 403\)/,
+    );
+  });
+
   it("surfaces abort errors from fetch", async () => {
     vi.stubGlobal(
       "fetch",
