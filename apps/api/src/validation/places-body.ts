@@ -1,5 +1,9 @@
-import type { PlaceGeometryType, PlaceSearchCriteria } from "places-core";
-import { CategoryTaxonomy, isAllowedOsmTagKey } from "places-core";
+import { isAllowedOsmTagKey } from "places-core/osm-tags";
+import type {
+  PlaceGeometryType,
+  PlaceSearchCriteria,
+} from "places-core/places";
+import { CategoryTaxonomy } from "places-core/taxonomy";
 import { type ProblemDetails, problem } from "../http/problem.js";
 
 const COUNTRY_CODE_PATTERN = /^[A-Za-z]{2}$/;

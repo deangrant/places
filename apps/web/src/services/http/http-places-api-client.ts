@@ -1,12 +1,14 @@
+import { OVERPASS_CLIENT_TIMEOUT_SECONDS } from "places-core/overpass";
 import type {
   OverpassAttemptEvent,
   OverpassAttemptListener,
+} from "places-core/overpass-attempt";
+import type {
   Place,
   PlaceGeometryType,
   PlaceSearchCriteria,
   PlaceSearchResult,
-} from "places-core";
-import { OVERPASS_CLIENT_TIMEOUT_SECONDS } from "places-core";
+} from "places-core/places";
 
 const TRAILING_SLASH = /\/$/;
 
@@ -163,20 +165,11 @@ async function readNdjsonResult(
     throw new Error(UNEXPECTED_API_RESPONSE);
   }
 
-  const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
   let sawProgress = false;
-  let reading = true;
 
-  while (reading) {
-    // Sequential stream framing: each chunk must be decoded before the next read.
-    // biome-ignore lint/performance/noAwaitInLoops: ordered NDJSON framing
-    const { done, value } = await reader.read();
-    if (done) {
-      reading = false;
-      break;
-    }
+  for await (const value of response.body) {
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split("\n");
     buffer = lines.pop() ?? "";

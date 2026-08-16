@@ -4,7 +4,7 @@ import {
   OVERPASS_RETRY_BASE_MS,
   OVERPASS_RETRY_MAX_MS,
   OVERPASS_TIMEOUT_SECONDS,
-} from "places-core";
+} from "places-core/overpass";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OverpassError } from "./overpass-error.js";
 import {

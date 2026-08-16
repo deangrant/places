@@ -1,4 +1,4 @@
-import type { Place, PlaceSearchResult } from "places-core";
+import type { Place, PlaceSearchResult } from "places-core/places";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ApiConfig } from "./config.js";
 import {
@@ -95,16 +95,23 @@ describe("createRequestListener HTTP contract", () => {
 
   it("returns 405 for GET on places routes", async () => {
     await withServer(httpTestConfig(), mockServices(), async (baseUrl) => {
-      for (const path of ["/places/search", "/places/export"] as const) {
-        // biome-ignore lint/performance/noAwaitInLoops: sequential assertion order
-        const response = await fetch(`${baseUrl}${path}`, { method: "GET" });
-        expect(response.status).toBe(405);
-        await expect(response.json()).resolves.toMatchObject({
-          detail: `GET is not allowed for ${path}.`,
-          status: 405,
-          type: expect.stringMatching(METHOD_NOT_ALLOWED_TYPE),
-        });
-      }
+      const search = await fetch(`${baseUrl}/places/search`, { method: "GET" });
+      expect(search.status).toBe(405);
+      await expect(search.json()).resolves.toMatchObject({
+        detail: "GET is not allowed for /places/search.",
+        status: 405,
+        type: expect.stringMatching(METHOD_NOT_ALLOWED_TYPE),
+      });
+
+      const exportResponse = await fetch(`${baseUrl}/places/export`, {
+        method: "GET",
+      });
+      expect(exportResponse.status).toBe(405);
+      await expect(exportResponse.json()).resolves.toMatchObject({
+        detail: "GET is not allowed for /places/export.",
+        status: 405,
+        type: expect.stringMatching(METHOD_NOT_ALLOWED_TYPE),
+      });
     });
   });
 
@@ -230,36 +237,34 @@ describe("createRequestListener HTTP contract", () => {
     });
   });
 
-  it("maps domain validation and upstream errors through the listener", async () => {
-    const cases: { message: string; status: number; typeSuffix: string }[] = [
-      {
-        message: "Unknown category id: missing",
-        status: 422,
-        typeSuffix: "/validation",
-      },
-      {
-        message:
-          "Choose a category, brand, place name, or OSM tag before searching.",
-        status: 422,
-        typeSuffix: "/validation",
-      },
-      {
-        message: "Query timed out after about 50s. Narrow the area or filters.",
-        status: 504,
-        typeSuffix: "/upstream-timeout",
-      },
-      {
-        message: "Could not reach the Overpass API. Try again.",
-        status: 502,
-        typeSuffix: "/upstream-unavailable",
-      },
-    ];
-
-    for (const { message, status, typeSuffix } of cases) {
+  it.each([
+    {
+      message: "Unknown category id: missing",
+      status: 422,
+      typeSuffix: "/validation",
+    },
+    {
+      message:
+        "Choose a category, brand, place name, or OSM tag before searching.",
+      status: 422,
+      typeSuffix: "/validation",
+    },
+    {
+      message: "Query timed out after about 50s. Narrow the area or filters.",
+      status: 504,
+      typeSuffix: "/upstream-timeout",
+    },
+    {
+      message: "Could not reach the Overpass API. Try again.",
+      status: 502,
+      typeSuffix: "/upstream-unavailable",
+    },
+  ])(
+    "maps domain error $status $typeSuffix through the listener",
+    async ({ message, status, typeSuffix }) => {
       const services = mockServices({
         search: () => Promise.reject(new Error(message)),
       });
-      // biome-ignore lint/performance/noAwaitInLoops: sequential assertion order
       await withServer(httpTestConfig(), services, async (baseUrl) => {
         const response = await fetch(`${baseUrl}/places/search`, {
           body: JSON.stringify(VALID_SEARCH),
@@ -273,6 +278,6 @@ describe("createRequestListener HTTP contract", () => {
           type: expect.stringMatching(new RegExp(`${typeSuffix}$`)),
         });
       });
-    }
-  });
+    },
+  );
 });

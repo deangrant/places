@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import type { OverpassAttemptEvent } from "places-core";
+import type { OverpassAttemptEvent } from "places-core/overpass-attempt";
 import { describe, expect, it } from "vitest";
 import { OverpassQueryStatus } from "./index";
 

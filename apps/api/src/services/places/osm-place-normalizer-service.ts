@@ -1,10 +1,10 @@
-import type {
-  ICategoryMatcher,
-  NormalizedOsmGeometry,
-  OsmElement,
-  Place,
-} from "places-core";
-import { normalizeOsmCenterPoint, normalizeOsmGeometry } from "places-core";
+import {
+  type NormalizedOsmGeometry,
+  normalizeOsmCenterPoint,
+  normalizeOsmGeometry,
+} from "places-core/osm-geometry";
+import type { OsmElement, Place } from "places-core/places";
+import type { ICategoryMatcher } from "places-core/taxonomy";
 import {
   inferSubCategory,
   inferTopCategory,

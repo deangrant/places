@@ -1,4 +1,3 @@
-import type { OverpassAttemptListener, OverpassResponse } from "places-core";
 import {
   OVERPASS_ATTEMPT_TIMEOUT_SECONDS,
   OVERPASS_CLIENT_TIMEOUT_SECONDS,
@@ -7,7 +6,9 @@ import {
   OVERPASS_RETRY_BASE_MS,
   OVERPASS_RETRY_MAX_MS,
   OVERPASS_TIMEOUT_SECONDS,
-} from "places-core";
+} from "places-core/overpass";
+import type { OverpassAttemptListener } from "places-core/overpass-attempt";
+import type { OverpassResponse } from "places-core/places";
 import { OverpassError } from "./overpass-error.js";
 import {
   overpassStatusMessage,
@@ -18,7 +19,7 @@ export type {
   OverpassAttemptEvent,
   OverpassAttemptListener,
   OverpassAttemptStatus,
-} from "places-core";
+} from "places-core/overpass-attempt";
 
 /**
  * Low-level Overpass interpreter client.

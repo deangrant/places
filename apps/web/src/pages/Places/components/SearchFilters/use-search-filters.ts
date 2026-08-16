@@ -1,4 +1,5 @@
-import { COUNTRY_OPTIONS, OSM_TAG_KEY_ALLOWLIST } from "places-core";
+import { COUNTRY_OPTIONS } from "places-core/countries";
+import { OSM_TAG_KEY_ALLOWLIST } from "places-core/osm-tags";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useCallback, useId, useMemo, useState } from "react";
 import type { SelectOption } from "@/components/core/Select/index.types";

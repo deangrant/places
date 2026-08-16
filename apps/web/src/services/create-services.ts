@@ -1,4 +1,4 @@
-import { CategoryTaxonomy, type ICategoryLookup } from "places-core";
+import { CategoryTaxonomy, type ICategoryLookup } from "places-core/taxonomy";
 import {
   HttpPlacesApiClient,
   type IPlaceGeometryExporter,

@@ -1,5 +1,5 @@
-import type { PlaceSearchCriteria } from "places-core";
-import { OVERPASS_CLIENT_TIMEOUT_SECONDS } from "places-core";
+import { OVERPASS_CLIENT_TIMEOUT_SECONDS } from "places-core/overpass";
+import type { PlaceSearchCriteria } from "places-core/places";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   HttpPlacesApiClient,

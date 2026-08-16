@@ -1,4 +1,4 @@
-import type { OverpassAttemptEvent } from "places-core";
+import type { OverpassAttemptEvent } from "places-core/overpass-attempt";
 
 /**
  * Props for the Overpass query status list shown under loaders.

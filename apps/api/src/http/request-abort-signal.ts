@@ -1,5 +1,5 @@
 import type { ServerResponse } from "node:http";
-import { OVERPASS_CLIENT_TIMEOUT_SECONDS } from "places-core";
+import { OVERPASS_CLIENT_TIMEOUT_SECONDS } from "places-core/overpass";
 
 /**
  * AbortSignal for the overall Places route/UI timeout budget.

@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { OverpassAttemptListener } from "places-core";
+import type { OverpassAttemptListener } from "places-core/overpass-attempt";
 import type { ApiConfig } from "./config.js";
 import type { ApiServices } from "./create-services.js";
 import { applyCors } from "./http/cors.js";

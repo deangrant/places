@@ -1,5 +1,5 @@
-import type { BBox, GeocodeResult } from "places-core";
-import { NOMINATIM_ENDPOINT } from "places-core";
+import { NOMINATIM_ENDPOINT } from "places-core/overpass";
+import type { BBox, GeocodeResult } from "places-core/places";
 
 /**
  * Resolves administrative areas for Overpass spatial scoping.

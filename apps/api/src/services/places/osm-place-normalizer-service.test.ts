@@ -1,4 +1,5 @@
-import type { ICategoryMatcher, OsmElement } from "places-core";
+import type { OsmElement } from "places-core/places";
+import type { ICategoryMatcher } from "places-core/taxonomy";
 import { describe, expect, it } from "vitest";
 import { OsmPlaceNormalizer } from "./osm-place-normalizer-service.js";
 

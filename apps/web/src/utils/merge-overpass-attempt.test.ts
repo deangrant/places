@@ -1,4 +1,4 @@
-import type { OverpassAttemptEvent } from "places-core";
+import type { OverpassAttemptEvent } from "places-core/overpass-attempt";
 import { describe, expect, it } from "vitest";
 import { mergeOverpassAttempt } from "@/utils/merge-overpass-attempt";
 
