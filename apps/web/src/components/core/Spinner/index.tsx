@@ -9,7 +9,12 @@ export function Spinner({ label = "Loading", size = "sm" }: SpinnerProps) {
 
   return (
     <span className={className} role="status">
-      <span aria-hidden className={styles.dot} />
+      <span aria-hidden className={styles.track}>
+        <span className={styles.dotIdle} />
+        <span className={styles.dotIdle} />
+        <span className={styles.dotIdle} />
+        <span className={styles.dotActive} />
+      </span>
       {label}
     </span>
   );
