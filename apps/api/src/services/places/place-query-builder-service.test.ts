@@ -1,4 +1,5 @@
-import type { CategoryDefinition, ICategoryLookup } from "places-core";
+import type { CategoryDefinition } from "places-core/places";
+import type { ICategoryLookup } from "places-core/taxonomy";
 import { describe, expect, it } from "vitest";
 import {
   PlaceQueryBuilder,

@@ -1,9 +1,9 @@
 import {
-  CategoryTaxonomy,
   NOMINATIM_ENDPOINT,
   OVERPASS_ATTEMPT_TIMEOUT_SECONDS,
   OVERPASS_ENDPOINTS,
-} from "places-core";
+} from "places-core/overpass";
+import { CategoryTaxonomy } from "places-core/taxonomy";
 import type { ApiConfig } from "./config.js";
 import { NominatimAreaResolver } from "./services/geocoding/nominatim-area-resolver-service.js";
 import { OverpassHttpClient } from "./services/overpass/overpass-http-client-service.js";

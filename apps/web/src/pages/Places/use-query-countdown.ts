@@ -1,4 +1,4 @@
-import { OVERPASS_CLIENT_TIMEOUT_SECONDS } from "places-core";
+import { OVERPASS_CLIENT_TIMEOUT_SECONDS } from "places-core/overpass";
 import { useEffect, useState } from "react";
 
 /**

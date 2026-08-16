@@ -1,12 +1,11 @@
-import {
-  type ICategoryLookup,
-  isAllowedOsmTagKey,
-  type OsmTagPredicate,
-  OVERPASS_TIMEOUT_SECONDS,
-  type PlaceSearchCriteria,
-  RESULT_LIMIT,
-  type SpatialScope,
-} from "places-core";
+import { isAllowedOsmTagKey } from "places-core/osm-tags";
+import { OVERPASS_TIMEOUT_SECONDS, RESULT_LIMIT } from "places-core/overpass";
+import type {
+  OsmTagPredicate,
+  PlaceSearchCriteria,
+  SpatialScope,
+} from "places-core/places";
+import type { ICategoryLookup } from "places-core/taxonomy";
 
 /**
  * Overpass print mode for a Places criteria query.

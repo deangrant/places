@@ -1,11 +1,11 @@
+import { isAllowedOsmTagKey } from "places-core/osm-tags";
+import type { OverpassAttemptListener } from "places-core/overpass-attempt";
 import type {
   OsmElement,
-  OverpassAttemptListener,
   OverpassResponse,
   PlaceSearchCriteria,
   SpatialScope,
-} from "places-core";
-import { isAllowedOsmTagKey } from "places-core";
+} from "places-core/places";
 import {
   type IAreaResolver,
   isFiniteBBox,

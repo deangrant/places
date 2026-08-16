@@ -1,4 +1,4 @@
-import type { OverpassResponse } from "places-core";
+import type { OverpassResponse } from "places-core/places";
 import { OverpassError } from "./overpass-error.js";
 
 /**

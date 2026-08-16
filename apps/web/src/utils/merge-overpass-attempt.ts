@@ -1,4 +1,4 @@
-import type { OverpassAttemptEvent } from "places-core";
+import type { OverpassAttemptEvent } from "places-core/overpass-attempt";
 
 /**
  * Merges an Overpass attempt event into the attempt list by endpoint index.

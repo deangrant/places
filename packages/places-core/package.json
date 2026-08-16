@@ -4,9 +4,37 @@
   "type": "module",
   "version": "1.0.0",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+    "./categories": {
+      "types": "./dist/constants/categories.constants.d.ts",
+      "default": "./dist/constants/categories.constants.js"
+    },
+    "./countries": {
+      "types": "./dist/constants/countries.constants.d.ts",
+      "default": "./dist/constants/countries.constants.js"
+    },
+    "./osm-tags": {
+      "types": "./dist/constants/osm-tags.constants.d.ts",
+      "default": "./dist/constants/osm-tags.constants.js"
+    },
+    "./overpass": {
+      "types": "./dist/constants/overpass.constants.d.ts",
+      "default": "./dist/constants/overpass.constants.js"
+    },
+    "./taxonomy": {
+      "types": "./dist/services/taxonomy/category-taxonomy-service.d.ts",
+      "default": "./dist/services/taxonomy/category-taxonomy-service.js"
+    },
+    "./overpass-attempt": {
+      "types": "./dist/types/overpass-attempt.types.d.ts",
+      "default": "./dist/types/overpass-attempt.types.js"
+    },
+    "./places": {
+      "types": "./dist/types/places.types.d.ts",
+      "default": "./dist/types/places.types.js"
+    },
+    "./osm-geometry": {
+      "types": "./dist/utils/osm-geometry.d.ts",
+      "default": "./dist/utils/osm-geometry.js"
     }
   },
   "scripts": {

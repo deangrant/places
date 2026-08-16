@@ -1,4 +1,8 @@
-import type { GeocodeResult, Place, PlaceSearchCriteria } from "places-core";
+import type {
+  GeocodeResult,
+  Place,
+  PlaceSearchCriteria,
+} from "places-core/places";
 import { describe, expect, it, vi } from "vitest";
 import type { IAreaResolver } from "../geocoding/nominatim-area-resolver-service.js";
 import type { IOverpassClient } from "../overpass/overpass-http-client-service.js";

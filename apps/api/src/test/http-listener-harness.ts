@@ -1,12 +1,12 @@
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
+import type { OverpassAttemptListener } from "places-core/overpass-attempt";
 import type {
-  OverpassAttemptListener,
   Place,
   PlaceGeometryType,
   PlaceSearchCriteria,
   PlaceSearchResult,
-} from "places-core";
+} from "places-core/places";
 import { vi } from "vitest";
 import type { ApiConfig } from "../config.js";
 import { createRequestListener } from "../create-app.js";

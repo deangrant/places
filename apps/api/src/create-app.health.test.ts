@@ -11,18 +11,25 @@ const METHOD_NOT_ALLOWED_TYPE = /\/method-not-allowed$/;
 describe("createRequestListener health methods", () => {
   it("rejects non-GET methods on live and ready with 405", async () => {
     await withServer(testConfig(), mockServices(), async (baseUrl) => {
-      for (const path of ["/health/live", "/health/ready"] as const) {
-        // biome-ignore lint/performance/noAwaitInLoops: sequential assertion order
-        const response = await fetch(`${baseUrl}${path}`, { method: "POST" });
-        expect(response.status).toBe(405);
-        expect(response.headers.get("Content-Type")).toMatch(PROBLEM_JSON);
-        await expect(response.json()).resolves.toMatchObject({
-          detail: `POST is not allowed for ${path}.`,
-          status: 405,
-          title: "Method not allowed",
-          type: expect.stringMatching(METHOD_NOT_ALLOWED_TYPE),
-        });
-      }
+      const live = await fetch(`${baseUrl}/health/live`, { method: "POST" });
+      expect(live.status).toBe(405);
+      expect(live.headers.get("Content-Type")).toMatch(PROBLEM_JSON);
+      await expect(live.json()).resolves.toMatchObject({
+        detail: "POST is not allowed for /health/live.",
+        status: 405,
+        title: "Method not allowed",
+        type: expect.stringMatching(METHOD_NOT_ALLOWED_TYPE),
+      });
+
+      const ready = await fetch(`${baseUrl}/health/ready`, { method: "POST" });
+      expect(ready.status).toBe(405);
+      expect(ready.headers.get("Content-Type")).toMatch(PROBLEM_JSON);
+      await expect(ready.json()).resolves.toMatchObject({
+        detail: "POST is not allowed for /health/ready.",
+        status: 405,
+        title: "Method not allowed",
+        type: expect.stringMatching(METHOD_NOT_ALLOWED_TYPE),
+      });
     });
   });
 });

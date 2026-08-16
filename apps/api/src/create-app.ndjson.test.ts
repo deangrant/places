@@ -1,4 +1,5 @@
-import type { OverpassAttemptEvent, PlaceSearchResult } from "places-core";
+import type { OverpassAttemptEvent } from "places-core/overpass-attempt";
+import type { PlaceSearchResult } from "places-core/places";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ApiConfig } from "./config.js";
 import {

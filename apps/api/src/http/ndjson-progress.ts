@@ -1,5 +1,5 @@
 import type { ServerResponse } from "node:http";
-import type { OverpassAttemptEvent } from "places-core";
+import type { OverpassAttemptEvent } from "places-core/overpass-attempt";
 import type { ProblemDetails } from "./problem.js";
 
 export const NDJSON_CONTENT_TYPE = "application/x-ndjson; charset=utf-8";

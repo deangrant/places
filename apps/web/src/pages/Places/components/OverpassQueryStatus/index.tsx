@@ -1,4 +1,4 @@
-import type { OverpassAttemptEvent } from "places-core";
+import type { OverpassAttemptEvent } from "places-core/overpass-attempt";
 import styles from "./index.module.css";
 import type { OverpassQueryStatusProps } from "./index.types";
 

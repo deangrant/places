@@ -1,4 +1,9 @@
 export type {
+  OverpassAttemptEvent,
+  OverpassAttemptListener,
+  OverpassAttemptStatus,
+} from "places-core/overpass-attempt";
+export type {
   BBox,
   CategoryDefinition,
   GeocodeResult,
@@ -8,9 +13,6 @@ export type {
   OsmLatLon,
   OsmRelationMember,
   OsmTagPredicate,
-  OverpassAttemptEvent,
-  OverpassAttemptListener,
-  OverpassAttemptStatus,
   OverpassResponse,
   Place,
   PlaceDrawableGeometry,
@@ -18,4 +20,4 @@ export type {
   PlaceSearchCriteria,
   PlaceSearchResult,
   SpatialScope,
-} from "places-core";
+} from "places-core/places";
