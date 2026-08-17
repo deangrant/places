@@ -48,6 +48,7 @@ describe("preparePlacesForGeometryExport", () => {
       "POINT",
       undefined,
       undefined,
+      undefined,
     );
     expect(result).toEqual(exported);
   });
@@ -65,7 +66,28 @@ describe("preparePlacesForGeometryExport", () => {
       "POLYGON",
       undefined,
       undefined,
+      undefined,
     );
     expect(result).toEqual(exported);
+  });
+
+  it("forwards includeRetailArea options to exportByGeometry", async () => {
+    const exported = [place({ geometryType: "POLYGON", id: "way/2" })];
+    const exportByGeometry = vi.fn(async () => exported);
+    await preparePlacesForGeometryExport(
+      criteria,
+      "POLYGON",
+      exportByGeometry,
+      undefined,
+      undefined,
+      { includeRetailArea: true },
+    );
+    expect(exportByGeometry).toHaveBeenCalledWith(
+      criteria,
+      "POLYGON",
+      undefined,
+      undefined,
+      { includeRetailArea: true },
+    );
   });
 });

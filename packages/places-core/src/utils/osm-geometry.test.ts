@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { OsmElement } from "../types/places.types.js";
+import type {
+  OsmElement,
+  PlaceDrawableGeometry,
+} from "../types/places.types.js";
 import {
+  approximateDrawableArea,
   normalizeOsmCenterPoint,
   normalizeOsmGeometry,
+  pointInDrawableGeometry,
 } from "./osm-geometry.js";
 
 describe("normalizeOsmGeometry", () => {
@@ -121,5 +126,92 @@ describe("normalizeOsmCenterPoint", () => {
     });
     expect(result?.geometryType).toBe("POINT");
     expect(result?.centroid).toEqual({ lat: 1.5, lon: 2.5 });
+  });
+});
+
+describe("pointInDrawableGeometry", () => {
+  const square: PlaceDrawableGeometry = {
+    polygons: [
+      [
+        [
+          { lat: 0, lon: 0 },
+          { lat: 0, lon: 2 },
+          { lat: 2, lon: 2 },
+          { lat: 2, lon: 0 },
+          { lat: 0, lon: 0 },
+        ],
+      ],
+    ],
+  };
+
+  it("reports points inside the outer ring", () => {
+    expect(pointInDrawableGeometry({ lat: 1, lon: 1 }, square)).toBe(true);
+  });
+
+  it("reports points outside the outer ring", () => {
+    expect(pointInDrawableGeometry({ lat: 5, lon: 5 }, square)).toBe(false);
+  });
+
+  it("excludes points that fall in a hole", () => {
+    const withHole: PlaceDrawableGeometry = {
+      polygons: [
+        [
+          [
+            { lat: 0, lon: 0 },
+            { lat: 0, lon: 4 },
+            { lat: 4, lon: 4 },
+            { lat: 4, lon: 0 },
+            { lat: 0, lon: 0 },
+          ],
+          [
+            { lat: 1, lon: 1 },
+            { lat: 1, lon: 2 },
+            { lat: 2, lon: 2 },
+            { lat: 2, lon: 1 },
+            { lat: 1, lon: 1 },
+          ],
+        ],
+      ],
+    };
+    expect(pointInDrawableGeometry({ lat: 1.5, lon: 1.5 }, withHole)).toBe(
+      false,
+    );
+    expect(pointInDrawableGeometry({ lat: 0.5, lon: 0.5 }, withHole)).toBe(
+      true,
+    );
+  });
+});
+
+describe("approximateDrawableArea", () => {
+  it("ranks a larger square above a smaller nested square", () => {
+    const large: PlaceDrawableGeometry = {
+      polygons: [
+        [
+          [
+            { lat: 0, lon: 0 },
+            { lat: 0, lon: 4 },
+            { lat: 4, lon: 4 },
+            { lat: 4, lon: 0 },
+            { lat: 0, lon: 0 },
+          ],
+        ],
+      ],
+    };
+    const small: PlaceDrawableGeometry = {
+      polygons: [
+        [
+          [
+            { lat: 1, lon: 1 },
+            { lat: 1, lon: 2 },
+            { lat: 2, lon: 2 },
+            { lat: 2, lon: 1 },
+            { lat: 1, lon: 1 },
+          ],
+        ],
+      ],
+    };
+    expect(approximateDrawableArea(large)).toBeGreaterThan(
+      approximateDrawableArea(small),
+    );
   });
 });

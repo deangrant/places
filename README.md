@@ -129,6 +129,7 @@ Place data © OpenStreetMap contributors ([ODbL](https://www.openstreetmap.org/c
 - **Country UI vs API.** The dropdown is a full static ISO list from `places-core`; the API still accepts any ISO alpha-2 code.
 - **Co-versioned DTOs.** The SPA casts Places API success JSON to `places-core` types with only a light shape check. Deploy `apps/web` and `apps/api` from the same revision.
 - **Public OSM capacity.** Searches depend on public Nominatim/Overpass fairness. Identify yourself with a real User-Agent and email; expect rate limits and occasional upstream failures.
+- **Retail-area export coverage.** Advanced export “Include Retail Area” only finds enclosing `landuse=retail` / `shop=mall` polygons present in OSM for the search scope; otherwise the place footprint is kept.
 - **Hosting.** Local Node + Vite is first-class. Long Overpass wall-clock budgets fit long-running Node/Containers better than short-lived Workers.
 
 ## Agents and docs

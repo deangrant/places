@@ -20,6 +20,8 @@ import type { Place } from "@/types/places.types";
 const downloadPlacesCsv = vi.hoisted(() => vi.fn());
 const EXPORT_BUTTON = /^export$/i;
 const CANCEL_BUTTON = /^cancel$/i;
+const ADVANCED_BUTTON = /^advanced$/i;
+const BACK_BUTTON = /^back$/i;
 
 vi.mock(
   "@/services/export/places-csv-export-service",
@@ -151,6 +153,7 @@ describe("ExportGeometryModal", () => {
       "POINT",
       expect.any(AbortSignal),
       expect.any(Function),
+      { includeRetailArea: false },
     );
     expect(onExported).toHaveBeenCalledWith("POINT");
     expect(onClose).toHaveBeenCalled();
@@ -179,6 +182,7 @@ describe("ExportGeometryModal", () => {
       "POLYGON",
       expect.any(AbortSignal),
       expect.any(Function),
+      { includeRetailArea: false },
     );
     expect(downloadPlacesCsv).toHaveBeenCalledWith([polygonPlace]);
   });
@@ -268,5 +272,89 @@ describe("ExportGeometryModal", () => {
     unmount();
 
     expect(capturedSignal?.aborted).toBe(true);
+  });
+
+  it("navigates to advanced options and back while preserving the toggle", () => {
+    renderModal();
+
+    fireEvent.click(screen.getByRole("button", { name: "POLYGON" }));
+    fireEvent.click(screen.getByRole("button", { name: ADVANCED_BUTTON }));
+
+    expect(
+      screen.getByRole("dialog", { name: "Advanced options" }),
+    ).toBeVisible();
+    const retailSwitch = screen.getByRole("switch", {
+      name: "Include Retail Area",
+    });
+    expect(retailSwitch).toBeEnabled();
+    expect(retailSwitch).toHaveAttribute("aria-checked", "false");
+
+    fireEvent.click(retailSwitch);
+    expect(retailSwitch).toHaveAttribute("aria-checked", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: BACK_BUTTON }));
+    expect(screen.getByRole("dialog", { name: "Export places" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: ADVANCED_BUTTON }));
+    expect(
+      screen.getByRole("switch", { name: "Include Retail Area" }),
+    ).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("hides Include Retail Area when POINT is selected", () => {
+    renderModal();
+
+    fireEvent.click(screen.getByRole("button", { name: "POINT" }));
+    fireEvent.click(screen.getByRole("button", { name: ADVANCED_BUTTON }));
+
+    expect(
+      screen.queryByRole("switch", { name: "Include Retail Area" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows Include Retail Area when POLYGON is selected", () => {
+    renderModal();
+
+    fireEvent.click(screen.getByRole("button", { name: "POLYGON" }));
+    fireEvent.click(screen.getByRole("button", { name: ADVANCED_BUTTON }));
+
+    expect(
+      screen.getByRole("switch", { name: "Include Retail Area" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Replace each exported geometry with the enclosing retail area that contains the place. Places without an enclosing retail area keep their own footprint.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("sends includeRetailArea when enabled for POLYGON export", async () => {
+    const { placeExport } = renderModal();
+    const polygonPlace: Place = {
+      ...place,
+      geometryType: "POLYGON",
+      id: "way/1",
+    };
+    vi.mocked(placeExport.exportByGeometry).mockResolvedValueOnce([
+      polygonPlace,
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: "POLYGON" }));
+    fireEvent.click(screen.getByRole("button", { name: ADVANCED_BUTTON }));
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Include Retail Area" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: BACK_BUTTON }));
+    fireEvent.click(screen.getByRole("button", { name: EXPORT_BUTTON }));
+
+    await waitFor(() => {
+      expect(placeExport.exportByGeometry).toHaveBeenCalledWith(
+        {},
+        "POLYGON",
+        expect.any(AbortSignal),
+        expect.any(Function),
+        { includeRetailArea: true },
+      );
+    });
   });
 });

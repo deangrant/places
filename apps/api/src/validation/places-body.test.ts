@@ -173,4 +173,41 @@ describe("validatePlaceExportBody", () => {
       expect(result.problem.errors?.[field]?.[0]).toBe(message);
     }
   });
+
+  it("defaults includeRetailArea to false when omitted", () => {
+    const result = validatePlaceExportBody({
+      criteria: { brand: "Starbucks", countryCode: "us" },
+      geometryType: "POLYGON",
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.includeRetailArea).toBe(false);
+    }
+  });
+
+  it("accepts includeRetailArea true", () => {
+    const result = validatePlaceExportBody({
+      criteria: { brand: "Starbucks", countryCode: "us" },
+      geometryType: "MULTIPOLYGON",
+      includeRetailArea: true,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.includeRetailArea).toBe(true);
+    }
+  });
+
+  it("rejects non-boolean includeRetailArea", () => {
+    const result = validatePlaceExportBody({
+      criteria: { brand: "Starbucks", countryCode: "us" },
+      geometryType: "POLYGON",
+      includeRetailArea: "yes",
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.problem.errors.includeRetailArea[0]).toBe(
+        "must be a boolean",
+      );
+    }
+  });
 });

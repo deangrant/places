@@ -1,9 +1,10 @@
 import type { MouseEvent } from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/core/Button";
 import { Modal } from "@/components/core/Modal";
 import { Spinner } from "@/components/core/Spinner";
+import { Switch } from "@/components/core/Switch";
 import { usePlacesSearch } from "@/contexts/PlacesContext";
 import { useServices } from "@/contexts/ServicesContext";
 import { OverpassQueryStatus } from "@/pages/Places/components/OverpassQueryStatus";
@@ -14,6 +15,7 @@ import { formatCountdown } from "@/utils/format-countdown";
 import styles from "./index.module.css";
 import type {
   ExportGeometryModalProps,
+  ExportGeometryModalView,
   PlaceExportFormat,
 } from "./index.types";
 import { useExportPlacesByGeometry } from "./use-export-places-by-geometry";
@@ -42,6 +44,19 @@ const FORMAT_HINTS: Record<PlaceExportFormat, string> = {
 
 const DEFAULT_FORMAT_SELECTION: PlaceExportFormat[] = ["WKT"];
 
+const RETAIL_AREA_DESCRIPTION =
+  "Replace each exported geometry with the enclosing retail area that contains the place. Places without an enclosing retail area keep their own footprint.";
+
+/**
+ * Returns true when retail-area replacement can apply to the geometry type.
+ * @param geometryType Selected export geometry, or null when unset.
+ */
+function isRetailAreaGeometry(
+  geometryType: PlaceGeometryType | null,
+): geometryType is "POLYGON" | "MULTIPOLYGON" {
+  return geometryType === "POLYGON" || geometryType === "MULTIPOLYGON";
+}
+
 /** Renders the geometry and format picker for a Places CSV export. */
 export function ExportGeometryModal({
   open,
@@ -50,11 +65,14 @@ export function ExportGeometryModal({
 }: ExportGeometryModalProps) {
   const { criteria } = usePlacesSearch();
   const { placeExport } = useServices();
+  const [view, setView] = useState<ExportGeometryModalView>("main");
   const [selectedGeometry, setSelectedGeometry] =
     useState<PlaceGeometryType | null>(null);
   const [selectedFormats, setSelectedFormats] = useState<PlaceExportFormat[]>(
     DEFAULT_FORMAT_SELECTION,
   );
+  const [includeRetailArea, setIncludeRetailArea] = useState(false);
+  const retailAreaDescriptionId = useId();
   const {
     canExport,
     cancelExport,
@@ -96,6 +114,7 @@ export function ExportGeometryModal({
     });
   }, []);
 
+  const retailAreaEnabled = isRetailAreaGeometry(selectedGeometry);
   const exportEnabled =
     canExport(selectedGeometry) && selectedFormats.length > 0;
 
@@ -103,8 +122,20 @@ export function ExportGeometryModal({
     if (!selectedGeometry) {
       return;
     }
-    handleExport(selectedGeometry);
-  }, [handleExport, selectedGeometry]);
+    handleExport(selectedGeometry, {
+      includeRetailArea: retailAreaEnabled && includeRetailArea,
+    });
+  }, [handleExport, includeRetailArea, retailAreaEnabled, selectedGeometry]);
+
+  const openAdvanced = useCallback(() => {
+    setView("advanced");
+  }, []);
+
+  const backToMain = useCallback(() => {
+    setView("main");
+  }, []);
+
+  const modalTitle = view === "advanced" ? "Advanced options" : "Export places";
 
   return (
     <>
@@ -114,86 +145,143 @@ export function ExportGeometryModal({
         onClose={onClose}
         open={open && !exporting}
         showCloseButton={false}
-        title="Export places"
+        title={modalTitle}
       >
-        <p className={styles.hint}>
-          Choose one geometry type and a format for your CSV. Only the selected
-          geometry type is exported.
-        </p>
+        {view === "main" ? (
+          <>
+            <p className={styles.hint}>
+              Choose one geometry type and a format for your CSV. Only the
+              selected geometry type is exported.
+            </p>
 
-        <fieldset className={styles.tiles}>
-          <legend className={styles.legend}>Geometry</legend>
-          {EXPORT_GEOMETRY_TYPE_PRIORITY.map((type) => {
-            const isSelected = selectedGeometry === type;
-            return (
-              <button
-                aria-label={type}
-                aria-pressed={isSelected}
-                className={[styles.tile, isSelected ? styles.tileSelected : ""]
-                  .filter(Boolean)
-                  .join(" ")}
-                data-geometry-type={type}
-                disabled={exporting}
-                key={type}
-                onClick={selectGeometry}
-                type="button"
-              >
-                <span className={styles.tileLabel}>
-                  {GEOMETRY_LABELS[type]}
-                </span>
-                <span className={styles.tileHint}>{GEOMETRY_HINTS[type]}</span>
-              </button>
-            );
-          })}
-        </fieldset>
+            <fieldset className={styles.tiles}>
+              <legend className={styles.legend}>Geometry</legend>
+              {EXPORT_GEOMETRY_TYPE_PRIORITY.map((type) => {
+                const isSelected = selectedGeometry === type;
+                return (
+                  <button
+                    aria-label={type}
+                    aria-pressed={isSelected}
+                    className={[
+                      styles.tile,
+                      isSelected ? styles.tileSelected : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    data-geometry-type={type}
+                    disabled={exporting}
+                    key={type}
+                    onClick={selectGeometry}
+                    type="button"
+                  >
+                    <span className={styles.tileLabel}>
+                      {GEOMETRY_LABELS[type]}
+                    </span>
+                    <span className={styles.tileHint}>
+                      {GEOMETRY_HINTS[type]}
+                    </span>
+                  </button>
+                );
+              })}
+            </fieldset>
 
-        <fieldset className={styles.tiles}>
-          <legend className={styles.legend}>Format</legend>
-          {EXPORT_FORMATS.map((format) => {
-            const isSelected = selectedFormats.includes(format);
-            const formatLocked = EXPORT_FORMATS.length === 1 && isSelected;
-            return (
-              <button
-                aria-disabled={formatLocked || undefined}
-                aria-label={format}
-                aria-pressed={isSelected}
-                className={[styles.tile, isSelected ? styles.tileSelected : ""]
-                  .filter(Boolean)
-                  .join(" ")}
-                data-export-format={format}
-                disabled={exporting}
-                key={format}
-                onClick={toggleFormat}
-                title={
-                  formatLocked
-                    ? "Required while WKT is the only available format"
-                    : undefined
-                }
-                type="button"
-              >
-                <span className={styles.tileLabel}>
-                  {FORMAT_LABELS[format]}
-                </span>
-                <span className={styles.tileHint}>{FORMAT_HINTS[format]}</span>
-              </button>
-            );
-          })}
-        </fieldset>
+            <fieldset className={styles.tiles}>
+              <legend className={styles.legend}>Format</legend>
+              {EXPORT_FORMATS.map((format) => {
+                const isSelected = selectedFormats.includes(format);
+                const formatLocked = EXPORT_FORMATS.length === 1 && isSelected;
+                return (
+                  <button
+                    aria-disabled={formatLocked || undefined}
+                    aria-label={format}
+                    aria-pressed={isSelected}
+                    className={[
+                      styles.tile,
+                      isSelected ? styles.tileSelected : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    data-export-format={format}
+                    disabled={exporting}
+                    key={format}
+                    onClick={toggleFormat}
+                    title={
+                      formatLocked
+                        ? "Required while WKT is the only available format"
+                        : undefined
+                    }
+                    type="button"
+                  >
+                    <span className={styles.tileLabel}>
+                      {FORMAT_LABELS[format]}
+                    </span>
+                    <span className={styles.tileHint}>
+                      {FORMAT_HINTS[format]}
+                    </span>
+                  </button>
+                );
+              })}
+            </fieldset>
 
-        {error ? <p className={styles.error}>{error}</p> : null}
+            {error ? <p className={styles.error}>{error}</p> : null}
 
-        <div className={styles.actions}>
-          <Button disabled={exporting} onClick={onClose} variant="ghost">
-            Cancel
-          </Button>
-          <Button
-            disabled={!exportEnabled}
-            onClick={onExportClick}
-            variant="primary"
-          >
-            Export
-          </Button>
-        </div>
+            <div className={styles.actions}>
+              <div className={styles.actionsStart}>
+                <Button
+                  disabled={exporting}
+                  onClick={openAdvanced}
+                  variant="ghost"
+                >
+                  Advanced
+                </Button>
+              </div>
+              <div className={styles.actionsEnd}>
+                <Button disabled={exporting} onClick={onClose} variant="ghost">
+                  Cancel
+                </Button>
+                <Button
+                  disabled={!exportEnabled}
+                  onClick={onExportClick}
+                  variant="primary"
+                >
+                  Export
+                </Button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {retailAreaEnabled ? (
+              <div className={styles.optionRow}>
+                <div className={styles.optionCopy}>
+                  <span className={styles.optionTitle}>
+                    Include Retail Area
+                  </span>
+                  <p
+                    className={styles.optionDescription}
+                    id={retailAreaDescriptionId}
+                  >
+                    {RETAIL_AREA_DESCRIPTION}
+                  </p>
+                </div>
+                <Switch
+                  aria-describedby={retailAreaDescriptionId}
+                  aria-label="Include Retail Area"
+                  checked={includeRetailArea}
+                  onCheckedChange={setIncludeRetailArea}
+                />
+              </div>
+            ) : null}
+
+            <div className={styles.actions}>
+              <div className={styles.actionsStart}>
+                <Button onClick={backToMain} variant="ghost">
+                  Back
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
       </Modal>
 
       {exporting

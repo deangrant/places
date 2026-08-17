@@ -81,6 +81,10 @@ A Places search runs like this:
 9. The SPA updates attempt status, then renders places on the map and in the list.
 
 Export reuses the same pipeline shape via `POST /places/export` for geometry downloads.
+Optional `includeRetailArea` triggers a second Overpass geom query for
+`landuse=retail` / `shop=mall` polygons in the same spatial scope, then rewrites
+each exported place’s WKT to the smallest enclosing retail footprint (fallback:
+own geometry). Ignored for `POINT`.
 
 ```mermaid
 flowchart TD
@@ -107,10 +111,10 @@ Entry: [`apps/api/src/server.ts`](../../apps/api/src/server.ts) wires config, `c
 | Validation | [`validation/places-body.ts`](../../apps/api/src/validation/places-body.ts) | Allowlists and 422 field errors |
 | Geocoding | [`services/geocoding/nominatim-area-resolver-service.ts`](../../apps/api/src/services/geocoding/nominatim-area-resolver-service.ts) | Admin area → bbox / osm id |
 | Pipeline | [`services/places/place-overpass-pipeline-service.ts`](../../apps/api/src/services/places/place-overpass-pipeline-service.ts) | Assert filters → resolve → QL → query |
-| QL builder | [`place-query-builder-service.ts`](../../apps/api/src/services/places/place-query-builder-service.ts) | Criteria → Overpass QL |
+| QL builder | [`place-query-builder-service.ts`](../../apps/api/src/services/places/place-query-builder-service.ts), [`retail-area-query-builder-service.ts`](../../apps/api/src/services/places/retail-area-query-builder-service.ts) | Criteria / retail tags → Overpass QL |
 | Normalizer | [`osm-place-normalizer-service.ts`](../../apps/api/src/services/places/osm-place-normalizer-service.ts) | OSM elements → `Place` |
 | Overpass client | [`services/overpass/overpass-http-client-service.ts`](../../apps/api/src/services/overpass/overpass-http-client-service.ts) | Timeouts, retries, mirror failover |
-| Search / export | `place-search-service.ts`, `place-geometry-export-service.ts` | Domain facades over the pipeline |
+| Search / export | `place-search-service.ts`, `place-geometry-export-service.ts`, `retail-area-*-service.ts` | Domain facades; retail enclosure for export |
 | Rate limit | [`http/rate-limit.ts`](../../apps/api/src/http/rate-limit.ts) | Per-IP token bucket + concurrency |
 | NDJSON | [`http/ndjson-progress.ts`](../../apps/api/src/http/ndjson-progress.ts) | Attempt / result / problem framing |
 | Errors | [`http/problem.ts`](../../apps/api/src/http/problem.ts), [`map-domain-error.ts`](../../apps/api/src/http/map-domain-error.ts) | RFC 9457 problem+json |

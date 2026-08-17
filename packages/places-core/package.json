@@ -16,6 +16,10 @@
       "types": "./dist/constants/osm-tags.constants.d.ts",
       "default": "./dist/constants/osm-tags.constants.js"
     },
+    "./retail-area": {
+      "types": "./dist/constants/retail-area.constants.d.ts",
+      "default": "./dist/constants/retail-area.constants.js"
+    },
     "./overpass": {
       "types": "./dist/constants/overpass.constants.d.ts",
       "default": "./dist/constants/overpass.constants.js"

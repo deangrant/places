@@ -3,6 +3,9 @@ import type { PlaceGeometryType } from "@/types/places.types";
 /** Supported CSV geometry encodings for export. */
 export type PlaceExportFormat = "WKT";
 
+/** Modal surface shown inside the export dialog. */
+export type ExportGeometryModalView = "main" | "advanced";
+
 /**
  * Props for the export geometry type selection modal.
  */
