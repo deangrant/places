@@ -47,6 +47,9 @@ const DEFAULT_FORMAT_SELECTION: PlaceExportFormat[] = ["WKT"];
 const RETAIL_AREA_DESCRIPTION =
   "Replace each exported geometry with the enclosing retail area that contains the place. Places without an enclosing retail area keep their own footprint.";
 
+const TAGS_DESCRIPTION =
+  "Include a tags column with OSM key/value pairs that are not already covered by dedicated CSV columns.";
+
 /**
  * Returns true when retail-area replacement can apply to the geometry type.
  * @param geometryType Selected export geometry, or null when unset.
@@ -72,7 +75,9 @@ export function ExportGeometryModal({
     DEFAULT_FORMAT_SELECTION,
   );
   const [includeRetailArea, setIncludeRetailArea] = useState(false);
+  const [includeTags, setIncludeTags] = useState(false);
   const retailAreaDescriptionId = useId();
+  const tagsDescriptionId = useId();
   const {
     canExport,
     cancelExport,
@@ -124,8 +129,15 @@ export function ExportGeometryModal({
     }
     handleExport(selectedGeometry, {
       includeRetailArea: retailAreaEnabled && includeRetailArea,
+      includeTags,
     });
-  }, [handleExport, includeRetailArea, retailAreaEnabled, selectedGeometry]);
+  }, [
+    handleExport,
+    includeRetailArea,
+    includeTags,
+    retailAreaEnabled,
+    selectedGeometry,
+  ]);
 
   const openAdvanced = useCallback(() => {
     setView("advanced");
@@ -251,6 +263,21 @@ export function ExportGeometryModal({
           </>
         ) : (
           <>
+            <div className={styles.optionRow}>
+              <div className={styles.optionCopy}>
+                <span className={styles.optionTitle}>Include Tags</span>
+                <p className={styles.optionDescription} id={tagsDescriptionId}>
+                  {TAGS_DESCRIPTION}
+                </p>
+              </div>
+              <Switch
+                aria-describedby={tagsDescriptionId}
+                aria-label="Include Tags"
+                checked={includeTags}
+                onCheckedChange={setIncludeTags}
+              />
+            </div>
+
             {retailAreaEnabled ? (
               <div className={styles.optionRow}>
                 <div className={styles.optionCopy}>

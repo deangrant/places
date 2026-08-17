@@ -146,7 +146,9 @@ describe("ExportGeometryModal", () => {
     fireEvent.click(screen.getByRole("button", { name: EXPORT_BUTTON }));
 
     await waitFor(() => {
-      expect(downloadPlacesCsv).toHaveBeenCalledWith([place]);
+      expect(downloadPlacesCsv).toHaveBeenCalledWith([place], {
+        includeTags: false,
+      });
     });
     expect(placeExport.exportByGeometry).toHaveBeenCalledWith(
       {},
@@ -184,7 +186,9 @@ describe("ExportGeometryModal", () => {
       expect.any(Function),
       { includeRetailArea: false },
     );
-    expect(downloadPlacesCsv).toHaveBeenCalledWith([polygonPlace]);
+    expect(downloadPlacesCsv).toHaveBeenCalledWith([polygonPlace], {
+      includeTags: false,
+    });
   });
 
   it("shows an error and keeps the modal open when no places match", async () => {
@@ -310,6 +314,9 @@ describe("ExportGeometryModal", () => {
     expect(
       screen.queryByRole("switch", { name: "Include Retail Area" }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: "Include Tags" }),
+    ).toBeInTheDocument();
   });
 
   it("shows Include Retail Area when POLYGON is selected", () => {
@@ -318,6 +325,9 @@ describe("ExportGeometryModal", () => {
     fireEvent.click(screen.getByRole("button", { name: "POLYGON" }));
     fireEvent.click(screen.getByRole("button", { name: ADVANCED_BUTTON }));
 
+    expect(
+      screen.getByRole("switch", { name: "Include Tags" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("switch", { name: "Include Retail Area" }),
     ).toBeInTheDocument();
@@ -356,5 +366,33 @@ describe("ExportGeometryModal", () => {
         { includeRetailArea: true },
       );
     });
+    expect(downloadPlacesCsv).toHaveBeenCalledWith([polygonPlace], {
+      includeTags: false,
+    });
+  });
+
+  it("passes includeTags to the CSV downloader when enabled", async () => {
+    const { placeExport } = renderModal();
+
+    fireEvent.click(screen.getByRole("button", { name: "POINT" }));
+    fireEvent.click(screen.getByRole("button", { name: ADVANCED_BUTTON }));
+    const tagsSwitch = screen.getByRole("switch", { name: "Include Tags" });
+    expect(tagsSwitch).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(tagsSwitch);
+    fireEvent.click(screen.getByRole("button", { name: BACK_BUTTON }));
+    fireEvent.click(screen.getByRole("button", { name: EXPORT_BUTTON }));
+
+    await waitFor(() => {
+      expect(downloadPlacesCsv).toHaveBeenCalledWith([place], {
+        includeTags: true,
+      });
+    });
+    expect(placeExport.exportByGeometry).toHaveBeenCalledWith(
+      {},
+      "POINT",
+      expect.any(AbortSignal),
+      expect.any(Function),
+      { includeRetailArea: false },
+    );
   });
 });
