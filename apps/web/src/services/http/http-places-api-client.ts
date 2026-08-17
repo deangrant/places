@@ -30,6 +30,17 @@ export interface IPlaceSearchService {
 }
 
 /**
+ * Optional flags for geometry CSV export.
+ */
+export interface PlaceExportOptions {
+  /**
+   * When true for POLYGON / MULTIPOLYGON, replace each place WKT with the
+   * enclosing retail-area polygon when one exists.
+   */
+  includeRetailArea?: boolean;
+}
+
+/**
  * Re-queries Places for CSV export with a chosen geometry type.
  */
 export interface IPlaceGeometryExporter {
@@ -39,12 +50,14 @@ export interface IPlaceGeometryExporter {
    * @param geometryType Effective export geometry type.
    * @param signal Optional abort signal.
    * @param onAttempt Optional Overpass endpoint progress callback.
+   * @param options Optional export flags such as retail-area replacement.
    */
   exportByGeometry: (
     criteria: PlaceSearchCriteria,
     geometryType: PlaceGeometryType,
     signal?: AbortSignal,
     onAttempt?: OverpassAttemptListener,
+    options?: PlaceExportOptions,
   ) => Promise<Place[]>;
 }
 
@@ -88,14 +101,23 @@ export class HttpPlacesApiClient
     geometryType: PlaceGeometryType,
     signal?: AbortSignal,
     onAttempt?: OverpassAttemptListener,
+    options?: PlaceExportOptions,
   ): Promise<Place[]> {
-    const body = await this.postNdjson(
+    const body: {
+      criteria: PlaceSearchCriteria;
+      geometryType: PlaceGeometryType;
+      includeRetailArea?: boolean;
+    } = { criteria, geometryType };
+    if (options?.includeRetailArea === true) {
+      body.includeRetailArea = true;
+    }
+    const responseBody = await this.postNdjson(
       "/places/export",
-      { criteria, geometryType },
+      body,
       signal,
       onAttempt,
     );
-    return parseExportPlaces(body);
+    return parseExportPlaces(responseBody);
   }
 
   /**

@@ -5,7 +5,10 @@ import {
   browserPlacesCsvDownloader,
   type IPlacesCsvDownloader,
 } from "@/services/export/places-csv-export-service";
-import type { IPlaceGeometryExporter } from "@/services/http/http-places-api-client";
+import type {
+  IPlaceGeometryExporter,
+  PlaceExportOptions,
+} from "@/services/http/http-places-api-client";
 import type {
   OverpassAttemptEvent,
   PlaceGeometryType,
@@ -41,8 +44,11 @@ export interface UseExportPlacesByGeometryResult {
   error: string | null;
   /** True while an export API request is in flight. */
   exporting: boolean;
-  /** Starts export for the given geometry type. */
-  handleExport: (geometryType: PlaceGeometryType) => void;
+  /** Starts export for the given geometry type and optional flags. */
+  handleExport: (
+    geometryType: PlaceGeometryType,
+    options?: PlaceExportOptions,
+  ) => void;
   /** Live Overpass interpreter attempts for the in-flight export. */
   overpassAttempts: readonly OverpassAttemptEvent[];
   /** Soft timeout countdown seconds remaining. */
@@ -87,7 +93,7 @@ export function useExportPlacesByGeometry({
   );
 
   const handleExport = useCallback(
-    (geometryType: PlaceGeometryType) => {
+    (geometryType: PlaceGeometryType, options?: PlaceExportOptions) => {
       if (exporting) {
         return;
       }
@@ -101,8 +107,14 @@ export function useExportPlacesByGeometry({
       preparePlacesForGeometryExport(
         criteria,
         geometryType,
-        (exportCriteria, type, signal, onAttempt) =>
-          placeExport.exportByGeometry(exportCriteria, type, signal, onAttempt),
+        (exportCriteria, type, signal, onAttempt, exportOptions) =>
+          placeExport.exportByGeometry(
+            exportCriteria,
+            type,
+            signal,
+            onAttempt,
+            exportOptions,
+          ),
         controller.signal,
         (attempt) => {
           if (abortRef.current !== controller) {
@@ -110,6 +122,7 @@ export function useExportPlacesByGeometry({
           }
           setOverpassAttempts((prev) => mergeOverpassAttempt(prev, attempt));
         },
+        options,
       )
         .then((prepared) => {
           if (prepared.length === 0) {

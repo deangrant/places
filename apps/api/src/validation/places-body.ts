@@ -33,7 +33,11 @@ export type CriteriaValidation =
 export type ExportValidation =
   | {
       ok: true;
-      value: { criteria: PlaceSearchCriteria; geometryType: PlaceGeometryType };
+      value: {
+        criteria: PlaceSearchCriteria;
+        geometryType: PlaceGeometryType;
+        includeRetailArea: boolean;
+      };
     }
   | { ok: false; problem: ProblemDetails };
 
@@ -156,7 +160,11 @@ export function validatePlaceExportBody(body: unknown): ExportValidation {
 
   const errors: Record<string, string[]> = {};
   for (const key of Object.keys(body)) {
-    if (key !== "criteria" && key !== "geometryType") {
+    if (
+      key !== "criteria" &&
+      key !== "geometryType" &&
+      key !== "includeRetailArea"
+    ) {
       errors[key] = ["is not an allowed property"];
     }
   }
@@ -167,6 +175,16 @@ export function validatePlaceExportBody(body: unknown): ExportValidation {
     !GEOMETRY_TYPES.has(geometryType as PlaceGeometryType)
   ) {
     errors.geometryType = ["must be POINT, POLYGON, or MULTIPOLYGON"];
+  }
+
+  let includeRetailArea = false;
+  if ("includeRetailArea" in body) {
+    const { includeRetailArea: retailAreaFlag } = body;
+    if (typeof retailAreaFlag === "boolean") {
+      includeRetailArea = retailAreaFlag;
+    } else {
+      errors.includeRetailArea = ["must be a boolean"];
+    }
   }
 
   const criteriaResult = validatePlaceSearchCriteria(body.criteria);
@@ -204,6 +222,7 @@ export function validatePlaceExportBody(body: unknown): ExportValidation {
     value: {
       criteria: criteriaResult.value,
       geometryType: geometryType as PlaceGeometryType,
+      includeRetailArea,
     },
   };
 }

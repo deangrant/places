@@ -11,6 +11,19 @@ import type {
   PlaceNormalizeContext,
 } from "./osm-place-normalizer-service.js";
 import type { PlaceOverpassPipeline } from "./place-overpass-pipeline-service.js";
+import type { IRetailAreaGeometryResolver } from "./retail-area-geometry-service.js";
+import type { IRetailAreaQueryBuilder } from "./retail-area-query-builder-service.js";
+
+/**
+ * Optional flags for geometry CSV export.
+ */
+export interface PlaceExportOptions {
+  /**
+   * When true for POLYGON / MULTIPOLYGON, replace each place WKT with the
+   * enclosing retail-area polygon when one exists.
+   */
+  includeRetailArea?: boolean;
+}
 
 /**
  * Re-queries Places for CSV export with a chosen geometry type.
@@ -24,12 +37,14 @@ export interface IPlaceGeometryExporter {
    * @param geometryType Effective export geometry type.
    * @param signal Optional abort signal.
    * @param onAttempt Optional Overpass endpoint progress callback.
+   * @param options Optional export flags such as retail-area replacement.
    */
   exportByGeometry: (
     criteria: PlaceSearchCriteria,
     geometryType: PlaceGeometryType,
     signal?: AbortSignal,
     onAttempt?: OverpassAttemptListener,
+    options?: PlaceExportOptions,
   ) => Promise<Place[]>;
 }
 
@@ -53,6 +68,8 @@ interface GeometryExportStrategy {
  */
 export class PlaceGeometryExportService implements IPlaceGeometryExporter {
   private readonly pipeline: PlaceOverpassPipeline;
+  private readonly retailAreaGeometry: IRetailAreaGeometryResolver;
+  private readonly retailAreaQueryBuilder: IRetailAreaQueryBuilder;
   private readonly strategies: Record<
     PlaceGeometryType,
     GeometryExportStrategy
@@ -62,13 +79,19 @@ export class PlaceGeometryExportService implements IPlaceGeometryExporter {
    * @param pipeline Shared validate/resolve/query pipeline.
    * @param centerNormalizer Center-point place mapper.
    * @param geometryNormalizer Full-footprint place mapper.
+   * @param retailAreaQueryBuilder Retail-area Overpass QL builder.
+   * @param retailAreaGeometry Retail containment matcher.
    */
   constructor(
     pipeline: PlaceOverpassPipeline,
     centerNormalizer: ICenterPlaceNormalizer,
     geometryNormalizer: IGeometryPlaceNormalizer,
+    retailAreaQueryBuilder: IRetailAreaQueryBuilder,
+    retailAreaGeometry: IRetailAreaGeometryResolver,
   ) {
     this.pipeline = pipeline;
+    this.retailAreaQueryBuilder = retailAreaQueryBuilder;
+    this.retailAreaGeometry = retailAreaGeometry;
     this.strategies = {
       MULTIPOLYGON: {
         filter: (places) =>
@@ -101,9 +124,10 @@ export class PlaceGeometryExportService implements IPlaceGeometryExporter {
     geometryType: PlaceGeometryType,
     signal?: AbortSignal,
     onAttempt?: OverpassAttemptListener,
+    options?: PlaceExportOptions,
   ): Promise<Place[]> {
     const strategy = this.strategies[geometryType];
-    const { elements } = await this.pipeline.fetchElements(
+    const { elements, scope } = await this.pipeline.fetchElements(
       criteria,
       strategy.outputMode,
       signal,
@@ -114,6 +138,25 @@ export class PlaceGeometryExportService implements IPlaceGeometryExporter {
       isoCountryCode: criteria.countryCode,
       region: criteria.region,
     };
-    return strategy.filter(strategy.normalize(elements, context));
+    let places = strategy.filter(strategy.normalize(elements, context));
+
+    const includeRetailArea = options?.includeRetailArea === true;
+    if (
+      includeRetailArea &&
+      (geometryType === "POLYGON" || geometryType === "MULTIPOLYGON")
+    ) {
+      const retailQuery = this.retailAreaQueryBuilder.build(scope);
+      const retailElements = await this.pipeline.runQuery(
+        retailQuery,
+        signal,
+        onAttempt,
+      );
+      places = this.retailAreaGeometry.applyEnclosingRetailAreas(
+        places,
+        retailElements,
+      );
+    }
+
+    return places;
   }
 }

@@ -262,6 +262,7 @@ async function handleExport(
         validated.value.geometryType,
         routeSignal,
         onAttempt,
+        { includeRetailArea: validated.value.includeRetailArea },
       );
       if (isResponseClosed(res)) {
         return;

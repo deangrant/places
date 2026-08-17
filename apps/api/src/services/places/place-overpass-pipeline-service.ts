@@ -146,6 +146,21 @@ export class PlaceOverpassPipeline {
     this.assertHasFilters(criteria);
     const scope = await this.resolveScope(criteria, signal);
     const query = this.queryBuilder.build(criteria, scope, outputMode);
+    const elements = await this.runQuery(query, signal, onAttempt);
+    return { elements, scope };
+  }
+
+  /**
+   * Runs a pre-built Overpass QL string and rejects on interpreter remarks.
+   * @param query Overpass QL.
+   * @param signal Optional abort signal.
+   * @param onAttempt Optional Overpass endpoint progress callback.
+   */
+  async runQuery(
+    query: string,
+    signal?: AbortSignal,
+    onAttempt?: OverpassAttemptListener,
+  ): Promise<OsmElement[]> {
     const response: OverpassResponse = await this.overpass.query(
       query,
       signal,
@@ -157,6 +172,6 @@ export class PlaceOverpassPipeline {
       throw new Error(remark);
     }
 
-    return { elements: response.elements, scope };
+    return response.elements;
   }
 }

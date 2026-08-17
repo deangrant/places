@@ -14,6 +14,8 @@ import { PlaceOverpassPipeline } from "./services/places/place-overpass-pipeline
 import { PlaceQueryBuilder } from "./services/places/place-query-builder-service.js";
 import type { IPlaceSearchService } from "./services/places/place-search-service.js";
 import { PlaceSearchService } from "./services/places/place-search-service.js";
+import { RetailAreaGeometryService } from "./services/places/retail-area-geometry-service.js";
+import { RetailAreaQueryBuilder } from "./services/places/retail-area-query-builder-service.js";
 
 /**
  * Service graph exposed to HTTP route handlers.
@@ -59,6 +61,8 @@ export function createApiServices(config: ApiConfig): ApiServices {
     pipeline,
     normalizer,
     normalizer,
+    new RetailAreaQueryBuilder(),
+    new RetailAreaGeometryService(),
   );
 
   return {

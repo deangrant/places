@@ -10,6 +10,8 @@ import type { IOsmPlaceNormalizer } from "./osm-place-normalizer-service.js";
 import { PlaceGeometryExportService } from "./place-geometry-export-service.js";
 import { PlaceOverpassPipeline } from "./place-overpass-pipeline-service.js";
 import type { IPlaceQueryBuilder } from "./place-query-builder-service.js";
+import type { IRetailAreaGeometryResolver } from "./retail-area-geometry-service.js";
+import type { IRetailAreaQueryBuilder } from "./retail-area-query-builder-service.js";
 
 const baseCriteria: PlaceSearchCriteria = {
   brand: "Starbucks",
@@ -61,6 +63,8 @@ function createExporter(options: {
   overpass?: IOverpassClient;
   queryBuilder?: IPlaceQueryBuilder;
   normalizer?: IOsmPlaceNormalizer;
+  retailAreaGeometry?: IRetailAreaGeometryResolver;
+  retailAreaQueryBuilder?: IRetailAreaQueryBuilder;
 }) {
   const overpass: IOverpassClient = options.overpass ?? {
     query: vi.fn(async () => ({ elements: [] })),
@@ -75,6 +79,14 @@ function createExporter(options: {
   const areaResolver: IAreaResolver = options.areaResolver ?? {
     resolveAdmin: vi.fn(async () => adminRelation),
   };
+  const retailAreaQueryBuilder: IRetailAreaQueryBuilder =
+    options.retailAreaQueryBuilder ?? {
+      build: vi.fn(() => "retail-query"),
+    };
+  const retailAreaGeometry: IRetailAreaGeometryResolver =
+    options.retailAreaGeometry ?? {
+      applyEnclosingRetailAreas: vi.fn((places) => places),
+    };
   const pipeline = new PlaceOverpassPipeline(
     overpass,
     queryBuilder,
@@ -82,8 +94,17 @@ function createExporter(options: {
   );
   return {
     normalizer,
+    overpass,
     queryBuilder,
-    service: new PlaceGeometryExportService(pipeline, normalizer, normalizer),
+    retailAreaGeometry,
+    retailAreaQueryBuilder,
+    service: new PlaceGeometryExportService(
+      pipeline,
+      normalizer,
+      normalizer,
+      retailAreaQueryBuilder,
+      retailAreaGeometry,
+    ),
   };
 }
 
@@ -153,5 +174,116 @@ describe("PlaceGeometryExportService.exportByGeometry", () => {
     expect(normalizer.normalize).not.toHaveBeenCalled();
     expect(places).toHaveLength(1);
     expect(places[0].id).toBe("way/2");
+  });
+
+  it("skips retail-area fetch for POINT even when the flag is set", async () => {
+    const retailAreaQueryBuilder: IRetailAreaQueryBuilder = {
+      build: vi.fn(() => "retail-query"),
+    };
+    const retailAreaGeometry: IRetailAreaGeometryResolver = {
+      applyEnclosingRetailAreas: vi.fn((places) => places),
+    };
+    const overpass = {
+      query: vi.fn(async () => ({
+        elements: [{ id: 1, type: "node" as const }],
+      })),
+    };
+    const normalizer: IOsmPlaceNormalizer = {
+      normalize: vi.fn(() => [
+        makePlace({ geometryType: "POINT", id: "node/1" }),
+      ]),
+      normalizeWithGeometry: vi.fn(() => []),
+    };
+    const { service } = createExporter({
+      normalizer,
+      overpass,
+      retailAreaGeometry,
+      retailAreaQueryBuilder,
+    });
+
+    await service.exportByGeometry(
+      baseCriteria,
+      "POINT",
+      undefined,
+      undefined,
+      {
+        includeRetailArea: true,
+      },
+    );
+
+    expect(overpass.query).toHaveBeenCalledTimes(1);
+    expect(retailAreaQueryBuilder.build).not.toHaveBeenCalled();
+    expect(retailAreaGeometry.applyEnclosingRetailAreas).not.toHaveBeenCalled();
+  });
+
+  it("fetches retail areas and applies them for POLYGON when requested", async () => {
+    const polygonPlace = makePlace({
+      geometry: {
+        polygons: [
+          [
+            [
+              { lat: 0, lon: 0 },
+              { lat: 0, lon: 1 },
+              { lat: 1, lon: 1 },
+              { lat: 1, lon: 0 },
+              { lat: 0, lon: 0 },
+            ],
+          ],
+        ],
+      },
+      geometryType: "POLYGON",
+      geometryWkt: "POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))",
+      id: "way/2",
+      latitude: 0.5,
+      longitude: 0.5,
+      osmId: 2,
+      osmType: "way",
+    });
+    const rewritten = {
+      ...polygonPlace,
+      geometryWkt: "POLYGON ((0 0, 4 0, 4 4, 0 4, 0 0))",
+    };
+    const retailAreaQueryBuilder: IRetailAreaQueryBuilder = {
+      build: vi.fn(() => "retail-query"),
+    };
+    const retailAreaGeometry: IRetailAreaGeometryResolver = {
+      applyEnclosingRetailAreas: vi.fn(() => [rewritten]),
+    };
+    const overpass = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({
+          elements: [{ id: 2, type: "way" as const }],
+        })
+        .mockResolvedValueOnce({
+          elements: [{ id: 99, type: "way" as const }],
+        }),
+    };
+    const normalizer: IOsmPlaceNormalizer = {
+      normalize: vi.fn(() => []),
+      normalizeWithGeometry: vi.fn(() => [polygonPlace]),
+    };
+    const { service } = createExporter({
+      normalizer,
+      overpass,
+      retailAreaGeometry,
+      retailAreaQueryBuilder,
+    });
+
+    const places = await service.exportByGeometry(
+      baseCriteria,
+      "POLYGON",
+      undefined,
+      undefined,
+      { includeRetailArea: true },
+    );
+
+    expect(overpass.query).toHaveBeenCalledTimes(2);
+    expect(retailAreaQueryBuilder.build).toHaveBeenCalled();
+    expect(retailAreaGeometry.applyEnclosingRetailAreas).toHaveBeenCalledWith(
+      [polygonPlace],
+      [{ id: 99, type: "way" }],
+    );
+    expect(places[0].geometryWkt).toBe(rewritten.geometryWkt);
   });
 });

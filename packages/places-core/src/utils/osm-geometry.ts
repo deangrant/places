@@ -233,6 +233,59 @@ function ringCentroid(ring: LonLat[]): LonLat {
 }
 
 /**
+ * Returns true when the point lies inside the outer ring and outside all holes.
+ * @param point Test point.
+ * @param rings Polygon ring list (first exterior, then optional holes).
+ */
+export function pointInPolygonRings(point: LonLat, rings: LonLat[][]): boolean {
+  if (rings.length === 0) {
+    return false;
+  }
+  if (!pointInRing(point, rings[0])) {
+    return false;
+  }
+  for (let i = 1; i < rings.length; i += 1) {
+    if (pointInRing(point, rings[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Returns true when the point lies in any polygon of the drawable geometry.
+ * @param point Test point.
+ * @param geometry Drawable polygons (outer + holes per polygon).
+ */
+export function pointInDrawableGeometry(
+  point: LonLat,
+  geometry: PlaceDrawableGeometry,
+): boolean {
+  return geometry.polygons.some((rings) => pointInPolygonRings(point, rings));
+}
+
+/**
+ * Computes approximate planar area of drawable polygons via the shoelace formula.
+ * Units are square degrees; only relative comparisons are meaningful.
+ * @param geometry Drawable polygons to measure.
+ */
+export function approximateDrawableArea(
+  geometry: PlaceDrawableGeometry,
+): number {
+  let total = 0;
+  for (const rings of geometry.polygons) {
+    if (rings.length === 0) {
+      continue;
+    }
+    total += Math.abs(ringShoelaceArea(rings[0]));
+    for (let i = 1; i < rings.length; i += 1) {
+      total -= Math.abs(ringShoelaceArea(rings[i]));
+    }
+  }
+  return Math.max(0, total);
+}
+
+/**
  * Ray-cast point-in-polygon test for assigning holes to outer rings.
  * @param point Test point.
  * @param ring Closed outer ring.
@@ -256,6 +309,23 @@ function pointInRing(point: LonLat, ring: LonLat[]): boolean {
     }
   }
   return inside;
+}
+
+/**
+ * Computes the signed shoelace area of a closed ring.
+ * @param ring Closed lon/lat ring.
+ */
+function ringShoelaceArea(ring: LonLat[]): number {
+  const usable =
+    isClosedRing(ring) && ring.length > 1 ? ring.slice(0, -1) : ring;
+  if (usable.length < 3) {
+    return 0;
+  }
+  let sum = 0;
+  for (let i = 0, j = usable.length - 1; i < usable.length; j = i, i += 1) {
+    sum += usable[j].lon * usable[i].lat - usable[i].lon * usable[j].lat;
+  }
+  return sum / 2;
 }
 
 /**

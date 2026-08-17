@@ -50,6 +50,7 @@ export function mockServices(overrides?: {
     geometryType: PlaceGeometryType,
     signal?: AbortSignal,
     onAttempt?: OverpassAttemptListener,
+    options?: PlaceExportOptions,
   ) => Promise<Place[]>;
   search?: (
     criteria: PlaceSearchCriteria,

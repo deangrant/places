@@ -58,6 +58,12 @@ Supported `PlaceGeometryType` values:
 
 Export re-queries through the BFF (`POST /places/export`); the browser **must not** call Overpass for geometry.
 
+Optional body flag `includeRetailArea` (default `false`) applies only to `POLYGON` /
+`MULTIPOLYGON`. When true, the BFF replaces each place’s footprint WKT with the
+smallest enclosing OSM retail polygon (`landuse=retail` or `shop=mall`) that
+contains the place centroid. Places without an enclosing retail polygon keep
+their own geometry. The flag is ignored for `POINT`.
+
 ---
 
 ## 4. Docs drift
