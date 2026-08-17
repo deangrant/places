@@ -1,7 +1,7 @@
 import type { Place } from "@/types/places.types";
 
-/** Ordered CSV column headers for Places export. */
-export const PLACE_CSV_COLUMNS = [
+/** Always-exported CSV column headers for Places geometry export. */
+export const PLACE_CSV_BASE_COLUMNS = [
   "placekey",
   "addr_housenumber",
   "addr_street",
@@ -13,13 +13,21 @@ export const PLACE_CSV_COLUMNS = [
   "brand",
   "building",
   "name",
-  "opening_hours",
-  "operator",
-  "payment",
-  "tags",
   "website",
   "geometry_type",
   "wkt",
+] as const;
+
+/** Optional residual-tags column appended when Include Tags is enabled. */
+export const PLACE_CSV_TAGS_COLUMN = "tags" as const;
+
+/**
+ * All CSV columns that may appear in an export (base + optional tags).
+ * Prefer {@link resolvePlaceCsvColumns} for the active header set.
+ */
+export const PLACE_CSV_COLUMNS = [
+  ...PLACE_CSV_BASE_COLUMNS,
+  PLACE_CSV_TAGS_COLUMN,
 ] as const;
 
 const CSV_ESCAPE_PATTERN = /[",\n\r]/;
@@ -41,17 +49,48 @@ const TAGS_COLUMN_EXCLUDED_KEYS = new Set([
   "building",
   "contact:website",
   "name",
-  "opening_hours",
-  "operator",
-  "payment",
   "website",
 ]);
 
-/** One CSV export row keyed by snake_case column name. */
-export type PlaceCsvRow = Record<(typeof PLACE_CSV_COLUMNS)[number], string>;
+/** Base CSV column name. */
+export type PlaceCsvBaseColumn = (typeof PLACE_CSV_BASE_COLUMNS)[number];
+
+/** Any CSV column that may appear in an export. */
+export type PlaceCsvColumn = PlaceCsvBaseColumn | typeof PLACE_CSV_TAGS_COLUMN;
+
+/**
+ * Client-only options for CSV shaping (not sent to the Places BFF).
+ */
+export interface PlacesCsvExportOptions {
+  /**
+   * When true, appends a `tags` column of residual OSM key/value pairs.
+   * Defaults to false.
+   */
+  includeTags?: boolean;
+}
+
+/** One CSV export row; `tags` is present only when Include Tags is enabled. */
+export type PlaceCsvRow = Record<PlaceCsvBaseColumn, string> & {
+  tags?: string;
+};
+
+/**
+ * Returns the ordered CSV header columns for the given export options.
+ * @param options Client CSV shaping options.
+ */
+export function resolvePlaceCsvColumns(
+  options?: PlacesCsvExportOptions,
+): readonly PlaceCsvColumn[] {
+  if (options?.includeTags === true) {
+    return [...PLACE_CSV_BASE_COLUMNS, PLACE_CSV_TAGS_COLUMN];
+  }
+  return PLACE_CSV_BASE_COLUMNS;
+}
 
 /**
  * Maps a Place into a snake_case CSV row using in-memory fields and OSM tags.
+ * Always includes residual `tags` JSON; callers omit that field from the CSV
+ * when Include Tags is off.
  * @param place Place from the latest (possibly filtered) search result.
  */
 export function mapPlaceToExportRow(place: Place): PlaceCsvRow {
@@ -63,7 +102,6 @@ export function mapPlaceToExportRow(place: Place): PlaceCsvRow {
     id,
     isoCountryCode,
     locationName,
-    openHours,
     postalCode,
     region,
     tags,
@@ -85,9 +123,6 @@ export function mapPlaceToExportRow(place: Place): PlaceCsvRow {
     building: readTag(tags, "building"),
     geometry_type: geometryType,
     name: readTag(tags, "name") || locationName || "",
-    opening_hours: readTag(tags, "opening_hours") || openHours || "",
-    operator: readTag(tags, "operator"),
-    payment: formatPaymentTags(tags),
     placekey: id,
     tags: formatResidualTags(tags),
     website:
@@ -102,17 +137,28 @@ export function mapPlaceToExportRow(place: Place): PlaceCsvRow {
 /**
  * Builds an RFC4180 CSV document for the given places.
  * @param places Places to export.
+ * @param options Client CSV shaping options.
  */
-export function buildPlacesCsv(places: Place[]): string {
-  const header = PLACE_CSV_COLUMNS.join(",");
+export function buildPlacesCsv(
+  places: Place[],
+  options?: PlacesCsvExportOptions,
+): string {
+  const columns = resolvePlaceCsvColumns(options);
+  const header = columns.join(",");
   if (places.length === 0) {
     return `${header}\n`;
   }
+  const includeTags = options?.includeTags === true;
   const lines = places.map((place) => {
     const row = mapPlaceToExportRow(place);
-    return PLACE_CSV_COLUMNS.map((column) => escapeCsvField(row[column])).join(
-      ",",
-    );
+    return columns
+      .map((column) => {
+        if (column === PLACE_CSV_TAGS_COLUMN) {
+          return escapeCsvField(includeTags ? (row.tags ?? "{}") : "");
+        }
+        return escapeCsvField(row[column]);
+      })
+      .join(",");
   });
   return `${header}\n${lines.join("\n")}\n`;
 }
@@ -124,21 +170,25 @@ export interface IPlacesCsvDownloader {
   /**
    * Triggers a CSV download for the given places.
    * @param places Places to export.
-   * @param filename Optional download filename.
+   * @param options Client CSV options and optional download filename.
    */
-  download: (places: Place[], filename?: string) => void;
+  download: (
+    places: Place[],
+    options?: PlacesCsvExportOptions & { filename?: string },
+  ) => void;
 }
 
 /**
  * Triggers a browser download of places as CSV.
  * @param places Places to export (typically the filtered map/list set).
- * @param filename Optional download filename.
+ * @param options Client CSV options and optional download filename.
  */
 export function downloadPlacesCsv(
   places: Place[],
-  filename: string = defaultExportFilename(),
+  options?: PlacesCsvExportOptions & { filename?: string },
 ): void {
-  const csv = buildPlacesCsv(places);
+  const { filename = defaultExportFilename(), ...csvOptions } = options ?? {};
+  const csv = buildPlacesCsv(places, csvOptions);
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -190,44 +240,14 @@ function defaultExportFilename(): string {
 }
 
 /**
- * Collects payment-related OSM tags into a stable JSON object string.
- * @param tags Raw OSM tags on the place.
- */
-function formatPaymentTags(tags: Record<string, string>): string {
-  const paymentEntries = Object.entries(tags)
-    .filter(([key]) => isPaymentTagKey(key))
-    .sort(([left], [right]) => left.localeCompare(right));
-  if (paymentEntries.length === 0) {
-    return "";
-  }
-  return JSON.stringify(Object.fromEntries(paymentEntries));
-}
-
-/**
  * JSON of OSM tags not already exported as dedicated columns, keys sorted.
  * @param tags Raw OSM tags on the place.
  */
 function formatResidualTags(tags: Record<string, string>): string {
   const residualEntries = Object.entries(tags)
-    .filter(([key]) => !isExcludedFromTagsColumn(key))
+    .filter(([key]) => !TAGS_COLUMN_EXCLUDED_KEYS.has(key))
     .sort(([left], [right]) => left.localeCompare(right));
   return JSON.stringify(Object.fromEntries(residualEntries));
-}
-
-/**
- * True when an OSM key is already covered by a dedicated CSV column.
- * @param key OSM tag key.
- */
-function isExcludedFromTagsColumn(key: string): boolean {
-  return TAGS_COLUMN_EXCLUDED_KEYS.has(key) || isPaymentTagKey(key);
-}
-
-/**
- * True when an OSM key belongs in the payment column.
- * @param key OSM tag key.
- */
-function isPaymentTagKey(key: string): boolean {
-  return key === "payment" || key.startsWith("payment:");
 }
 
 /**

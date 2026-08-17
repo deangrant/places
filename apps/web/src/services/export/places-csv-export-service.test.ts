@@ -3,7 +3,8 @@ import {
   buildPlacesCsv,
   escapeCsvField,
   mapPlaceToExportRow,
-  PLACE_CSV_COLUMNS,
+  PLACE_CSV_BASE_COLUMNS,
+  resolvePlaceCsvColumns,
 } from "@/services/export/places-csv-export-service";
 import type { Place } from "@/types/places.types";
 
@@ -61,8 +62,24 @@ describe("escapeCsvField", () => {
   });
 });
 
+describe("resolvePlaceCsvColumns", () => {
+  it("omits tags by default", () => {
+    expect(resolvePlaceCsvColumns()).toEqual([...PLACE_CSV_BASE_COLUMNS]);
+    expect(resolvePlaceCsvColumns({ includeTags: false })).not.toContain(
+      "tags",
+    );
+  });
+
+  it("appends tags when includeTags is true", () => {
+    expect(resolvePlaceCsvColumns({ includeTags: true })).toEqual([
+      ...PLACE_CSV_BASE_COLUMNS,
+      "tags",
+    ]);
+  });
+});
+
 describe("mapPlaceToExportRow", () => {
-  it("maps placekey, addr fallbacks, brand, and in-memory WKT", () => {
+  it("maps placekey, addr fallbacks, brand, and residual tags JSON", () => {
     const row = mapPlaceToExportRow(
       place({
         brands: ["Acme"],
@@ -80,6 +97,7 @@ describe("mapPlaceToExportRow", () => {
           "addr:street": "Main St",
           "addr:unit": "B",
           building: "retail",
+          opening_hours: "24/7",
           operator: "Acme Co",
           payment: "yes",
           "payment:credit_cards": "yes",
@@ -100,18 +118,18 @@ describe("mapPlaceToExportRow", () => {
     expect(row.brand).toBe("Acme");
     expect(row.building).toBe("retail");
     expect(row.name).toBe("Acme Store");
-    expect(row.opening_hours).toBe("24/7");
-    expect(row.operator).toBe("Acme Co");
-    expect(row.payment).toBe(
-      JSON.stringify({
-        payment: "yes",
-        "payment:credit_cards": "yes",
-      }),
-    );
     expect(row.website).toBe("https://example.com");
     expect(row.geometry_type).toBe("POLYGON");
     expect(row.wkt).toBe("POLYGON((0 0,1 0,1 1,0 0))");
-    expect(row.tags).toBe("{}");
+    expect(JSON.parse(row.tags ?? "{}")).toEqual({
+      opening_hours: "24/7",
+      operator: "Acme Co",
+      payment: "yes",
+      "payment:credit_cards": "yes",
+    });
+    expect(row).not.toHaveProperty("opening_hours");
+    expect(row).not.toHaveProperty("operator");
+    expect(row).not.toHaveProperty("payment");
   });
 
   it("omits column-covered keys from tags while keeping residual keys", () => {
@@ -129,19 +147,19 @@ describe("mapPlaceToExportRow", () => {
         },
       }),
     );
-    const residual = JSON.parse(row.tags) as Record<string, string>;
+    const residual = JSON.parse(row.tags ?? "{}") as Record<string, string>;
     expect(residual).toEqual({
       amenity: "cafe",
+      "payment:visa": "yes",
       phone: "+1-555-0100",
     });
     expect(residual).not.toHaveProperty("brand");
     expect(residual).not.toHaveProperty("name");
     expect(residual).not.toHaveProperty("website");
     expect(residual).not.toHaveProperty("contact:website");
-    expect(residual).not.toHaveProperty("payment:visa");
   });
 
-  it("falls back to POINT WKT and empty payment when tags omit them", () => {
+  it("falls back to POINT WKT when tags omit geometry", () => {
     const row = mapPlaceToExportRow(
       place({
         geometryType: "POINT",
@@ -150,7 +168,6 @@ describe("mapPlaceToExportRow", () => {
         tags: { name: "Only Name" },
       }),
     );
-    expect(row.payment).toBe("");
     expect(row.geometry_type).toBe("POINT");
     expect(row.wkt).toBe("POINT(-122.3 47.6)");
     expect(row.name).toBe("Only Name");
@@ -170,8 +187,44 @@ describe("mapPlaceToExportRow", () => {
 });
 
 describe("buildPlacesCsv", () => {
-  it("emits header-only CSV for an empty list", () => {
-    expect(buildPlacesCsv([])).toBe(`${PLACE_CSV_COLUMNS.join(",")}\n`);
+  it("emits base header-only CSV for an empty list by default", () => {
+    expect(buildPlacesCsv([])).toBe(`${PLACE_CSV_BASE_COLUMNS.join(",")}\n`);
+  });
+
+  it("omits the tags column when includeTags is off", () => {
+    const csv = buildPlacesCsv([
+      place({
+        id: "node/9",
+        tags: { amenity: "cafe", name: "Shop" },
+      }),
+    ]);
+    const [header] = csv.trimEnd().split("\n");
+    expect(header.split(",")).not.toContain("tags");
+    expect(header.split(",")).not.toContain("opening_hours");
+    expect(header.split(",")).not.toContain("operator");
+    expect(header.split(",")).not.toContain("payment");
+  });
+
+  it("includes residual tags when includeTags is true", () => {
+    const csv = buildPlacesCsv(
+      [
+        place({
+          id: "node/9",
+          tags: {
+            amenity: "cafe",
+            name: "Shop",
+            opening_hours: "Mo-Fr 09:00-17:00",
+            operator: "Acme",
+          },
+        }),
+      ],
+      { includeTags: true },
+    );
+    const [header, dataLine] = csv.trimEnd().split("\n");
+    expect(header.split(",").at(-1)).toBe("tags");
+    expect(dataLine).toContain("opening_hours");
+    expect(dataLine).toContain("operator");
+    expect(dataLine).toContain("amenity");
   });
 
   it("quotes JSON and comma-containing fields", () => {

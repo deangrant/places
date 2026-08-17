@@ -4,6 +4,7 @@ import { preparePlacesForGeometryExport } from "@/services/export/export-places-
 import {
   browserPlacesCsvDownloader,
   type IPlacesCsvDownloader,
+  type PlacesCsvExportOptions,
 } from "@/services/export/places-csv-export-service";
 import type {
   IPlaceGeometryExporter,
@@ -15,6 +16,11 @@ import type {
   PlaceSearchCriteria,
 } from "@/types/places.types";
 import { mergeOverpassAttempt } from "@/utils/merge-overpass-attempt";
+
+/**
+ * Combined export flags for the modal: BFF geometry options plus client CSV shaping.
+ */
+export type ExportPlacesUiOptions = PlaceExportOptions & PlacesCsvExportOptions;
 
 /**
  * Options for the geometry CSV export hook.
@@ -47,7 +53,7 @@ export interface UseExportPlacesByGeometryResult {
   /** Starts export for the given geometry type and optional flags. */
   handleExport: (
     geometryType: PlaceGeometryType,
-    options?: PlaceExportOptions,
+    options?: ExportPlacesUiOptions,
   ) => void;
   /** Live Overpass interpreter attempts for the in-flight export. */
   overpassAttempts: readonly OverpassAttemptEvent[];
@@ -93,7 +99,7 @@ export function useExportPlacesByGeometry({
   );
 
   const handleExport = useCallback(
-    (geometryType: PlaceGeometryType, options?: PlaceExportOptions) => {
+    (geometryType: PlaceGeometryType, options?: ExportPlacesUiOptions) => {
       if (exporting) {
         return;
       }
@@ -103,6 +109,15 @@ export function useExportPlacesByGeometry({
       setOverpassAttempts([]);
       const controller = new AbortController();
       abortRef.current = controller;
+
+      // Keep BFF and CSV option bags segregated (includeTags is client-only).
+      const apiOptions: PlaceExportOptions | undefined =
+        options?.includeRetailArea === undefined
+          ? undefined
+          : { includeRetailArea: options.includeRetailArea };
+      const csvOptions: PlacesCsvExportOptions = {
+        includeTags: options?.includeTags === true,
+      };
 
       preparePlacesForGeometryExport(
         criteria,
@@ -122,14 +137,14 @@ export function useExportPlacesByGeometry({
           }
           setOverpassAttempts((prev) => mergeOverpassAttempt(prev, attempt));
         },
-        options,
+        apiOptions,
       )
         .then((prepared) => {
           if (prepared.length === 0) {
             setError("No places matched this geometry. Try a different type.");
             return;
           }
-          csvDownloader.download(prepared);
+          csvDownloader.download(prepared, csvOptions);
           onExported?.(geometryType);
           onClose();
         })
