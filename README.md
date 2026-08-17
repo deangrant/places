@@ -109,7 +109,7 @@ CI (see [`.github/workflows/`](.github/workflows/)):
 | Place name | Substring / contains |
 | Country | Searchable full ISO 3166-1 alpha-2 list (API accepts any 2-letter code) |
 | State / region, city | Resolved via Nominatim for Overpass spatial scope |
-| Advanced OSM tag | Allowlisted keys + optional value |
+| Advanced OSM tag | Allowlisted top-level OSM feature keys + exact value |
 
 A search needs at least one of: category, brand, name, or OSM tag (geography alone is not enough). Results are capped at `RESULT_LIMIT` (2500); the UI surfaces truncation when Overpass returns a full page.
 
