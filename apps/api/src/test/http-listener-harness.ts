@@ -12,6 +12,7 @@ import type { ApiConfig } from "../config.js";
 import { createRequestListener } from "../create-app.js";
 import type { ApiServices } from "../create-services.js";
 import { PlacesRateLimiter } from "../http/rate-limit.js";
+import type { PlaceExportOptions } from "../services/places/place-geometry-export-service.js";
 
 export const EMPTY_SEARCH_RESULT: PlaceSearchResult = {
   places: [],
