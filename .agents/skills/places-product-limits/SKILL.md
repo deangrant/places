@@ -35,7 +35,7 @@ Keywords in this document:
 | Place name | **Substring** / contains match. |
 | Category | Curated taxonomy; assigned label is **first-match** in `CATEGORY_DEFINITIONS`, not scored best-match. |
 | Country | UI offers full static ISO 3166-1 alpha-2 (`COUNTRY_OPTIONS`). API accepts any 2-letter code. |
-| OSM tag | Advanced key must be on `OSM_TAG_KEY_ALLOWLIST`. |
+| OSM tag | Advanced key must be on `OSM_TAG_KEY_ALLOWLIST` (OSM standalone top-level feature keys, excluding `boundary` and `route`). |
 
 A search **must** include at least one of: category, brand, name, or OSM tag (plus optional geography)—do not weaken the “enough filters” validation without a product decision.
 

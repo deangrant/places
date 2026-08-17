@@ -1,14 +1,41 @@
 /**
- * Allowlisted OSM keys for the Advanced tag filter (POI-relevant only).
+ * Allowlisted OSM keys for the Advanced tag filter.
+ * Standalone top-level feature keys from the OSM Top-level tag wiki,
+ * excluding `boundary` and `route` (poor fit for Places nwr key=value search).
+ * @see https://wiki.openstreetmap.org/wiki/Top-level_tag
  */
 export const OSM_TAG_KEY_ALLOWLIST = [
+  "advertising",
+  "aerialway",
+  "aeroway",
   "amenity",
-  "shop",
-  "tourism",
-  "leisure",
-  "office",
+  "barrier",
+  "building",
+  "club",
   "craft",
+  "departures_board",
+  "education",
+  "emergency",
+  "geological",
   "healthcare",
+  "highway",
+  "historic",
+  "landcover",
+  "landuse",
+  "leisure",
+  "man_made",
+  "military",
+  "natural",
+  "office",
+  "piste:type",
+  "place",
+  "power",
+  "public_transport",
+  "railway",
+  "shop",
+  "telecom",
+  "tourism",
+  "waterway",
 ] as const;
 
 /** Allowlisted OSM key usable in the Advanced tag filter. */
