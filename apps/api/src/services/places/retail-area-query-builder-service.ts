@@ -14,7 +14,8 @@ export interface IRetailAreaQueryBuilder {
 }
 
 /**
- * Default retail-area Overpass QL compiler (`landuse=retail`, `shop=mall`).
+ * Default retail-area Overpass QL compiler (`landuse=retail`, `shop=mall`,
+ * `landuse=commercial`).
  */
 export class RetailAreaQueryBuilder implements IRetailAreaQueryBuilder {
   /**

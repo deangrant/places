@@ -82,7 +82,7 @@ A Places search runs like this:
 
 Export reuses the same pipeline shape via `POST /places/export` for geometry downloads.
 Optional `includeRetailArea` triggers a second Overpass geom query for
-`landuse=retail` / `shop=mall` polygons in the same spatial scope, then rewrites
+`landuse=retail` / `shop=mall` / `landuse=commercial` polygons in the same spatial scope, then rewrites
 each exported place’s WKT to the smallest enclosing retail footprint (fallback:
 own geometry). Ignored for `POINT`.
 
