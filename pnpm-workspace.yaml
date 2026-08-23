@@ -6,7 +6,7 @@ packages:
 
 # Shared dependency versions referenced by packages via `catalog:`.
 catalog:
-  "@biomejs/biome": 2.5.5
+  "@biomejs/biome": 2.5.6
   "@fontsource/sora": 5.3.0
   "@testing-library/jest-dom": 7.0.0
   "@testing-library/react": 16.3.2
