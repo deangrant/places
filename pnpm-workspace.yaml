@@ -18,7 +18,7 @@ catalog:
   mapbox-gl: 3.27.0
   react: 19.2.8
   react-dom: 19.2.8
-  react-doctor: 0.9.1
+  react-doctor: 0.9.3
   typescript: 7.0.2
   ultracite: 7.9.4
   vite: 8.2.0
