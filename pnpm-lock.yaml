@@ -34,8 +34,8 @@ catalogs:
       specifier: 30.0.1
       version: 30.0.1
     mapbox-gl:
-      specifier: 3.27.0
-      version: 3.27.0
+      specifier: 3.28.1
+      version: 3.28.1
     react:
       specifier: 19.2.8
       version: 19.2.8
@@ -95,7 +95,7 @@ importers:
         version: 5.3.0
       mapbox-gl:
         specifier: 'catalog:'
-        version: 3.27.0
+        version: 3.28.1
       places-core:
         specifier: workspace:*
         version: link:../../packages/places-core
@@ -1892,8 +1892,8 @@ packages:
   magicast@0.5.3:
     resolution: {integrity: sha512-pVKE4UdSQ7DvHzivsCIFx2BJn1mHG6KsyrFcaxFx6tONdneEuThrDx0Cj3AMg58KyN4pzYT+LHOotxDQDjNvkw==}
 
-  mapbox-gl@3.27.0:
-    resolution: {integrity: sha512-K8W9LTTjFEJsg9qsnJbKk+zbXrmSqa+nU1EiFXez5gQ0T0RMtylZUelgg1/RE6vCUMvHX0gaYfWU9g2mTWuA0g==}
+  mapbox-gl@3.28.1:
+    resolution: {integrity: sha512-f8bCHFzZ51bKig7rnD7e08aoFLOV3MNFZduspZ4lgOgiaNVp9sw4NSWcgo3IWTyekYKKXjiICD2BP2o4DiYfxw==}
 
   mdn-data@2.27.1:
     resolution: {integrity: sha512-9Yubnt3e8A0OKwxYSXyhLymGW4sCufcLG6VdiDdUGVkPhpqLxlvP5vl1983gQjJl3tqbrM731mjaZaP68AgosQ==}
@@ -3979,7 +3979,7 @@ snapshots:
       '@babel/types': 7.29.7
       source-map-js: 1.2.1
 
-  mapbox-gl@3.27.0: {}
+  mapbox-gl@3.28.1: {}
 
   mdn-data@2.27.1: {}
 
