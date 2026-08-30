@@ -18,7 +18,7 @@ catalog:
   mapbox-gl: 3.28.1
   react: 19.2.8
   react-dom: 19.2.8
-  react-doctor: 0.9.1
+  react-doctor: 0.9.11
   typescript: 7.0.2
   ultracite: 7.10.2
   vite: 8.2.1
@@ -46,10 +46,10 @@ minimumReleaseAge: 30240
 
 # Exclude packages from the minimum release age policy.
 minimumReleaseAgeExclude:
-  - brace-expansion@5.0.9 # CVE-2026-69152, fixed in 5.0.9 (2026-07-30T10:00:32.762Z).
-  - fast-uri@3.1.5 # CVE-2026-18446, fixed in 3.1.5 (2026-07-31T09:16:56.212Z).
-  - nanoid@3.3.18 # CVE-2026-67213, fixed in 3.3.18 (2026-08-07T16:41:05.696Z).
-  - postcss@8.5.23 # CVE-2026-69153, fixed in 8.5.23 (2026-07-24T17:05:13.876Z).
+
+# Force-replace transitive versions across the dependency graph to avoid
+# supply-chain downgrades.
+overrides:
 
 # Block transitive deps from exotic sources (git/URL); only registry, workspace,
 # or local. pnpm 11 default is true; set explicitly so intent survives default
