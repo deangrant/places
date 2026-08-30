@@ -12,6 +12,9 @@ out/
 .turbo/
 .cache/
 
+# CodeGraph local index
+.codegraph/
+
 # Test / coverage
 coverage/
 *.lcov
