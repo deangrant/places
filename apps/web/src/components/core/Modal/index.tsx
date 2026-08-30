@@ -17,7 +17,7 @@ export function Modal({
 }: ModalProps) {
   const generatedTitleId = useId();
   const resolvedTitleId = titleId ?? generatedTitleId;
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const dialogRef = useRef(null as HTMLDialogElement | null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {

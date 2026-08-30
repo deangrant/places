@@ -41,16 +41,16 @@ export function MapView({
   onViewChange,
   onSelectPlace,
 }: MapViewProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const mapReadyRef = useRef(false);
+  const containerRef = useRef(null as HTMLDivElement | null);
+  const mapRef = useRef(null as mapboxgl.Map | null);
+  const mapReadyRef = useRef(false as boolean);
   const [mapReady, setMapReady] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportModalKey, setExportModalKey] = useState(0);
   const onViewChangeRef = useRef(onViewChange);
   const onSelectPlaceRef = useRef(onSelectPlace);
   const onBoundsFittedRef = useRef(onBoundsFitted);
-  const applyingExternalViewRef = useRef(false);
+  const applyingExternalViewRef = useRef(false as boolean);
   const accessToken = import.meta.env.VITE_MAPBOX_GL_JS_PUBLIC;
 
   useEffect(() => {
