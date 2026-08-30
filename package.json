@@ -1,19 +1,12 @@
 {
-  "author": "Dean Grant",
+  "name": "places",
+  "version": "1.0.0",
+  "private": true,
   "description": "",
-  "devDependencies": {
-    "@biomejs/biome": "catalog:",
-    "react-doctor": "catalog:",
-    "ultracite": "catalog:"
-  },
-  "engines": {
-    "node": ">=22"
-  },
   "keywords": [],
   "license": "MIT",
-  "name": "places",
-  "packageManager": "pnpm@11.8.0",
-  "private": true,
+  "author": "Dean Grant",
+  "type": "module",
   "scripts": {
     "build": "pnpm --filter places-core build && pnpm --filter api build && pnpm --filter web build",
     "check": "biome check .",
@@ -33,6 +26,13 @@
     "preview": "pnpm --filter web preview",
     "test": "pnpm --filter places-core test && pnpm --filter api test && pnpm --filter web test"
   },
-  "type": "module",
-  "version": "1.0.0"
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "react-doctor": "catalog:",
+    "ultracite": "catalog:"
+  },
+  "packageManager": "pnpm@11.8.0",
+  "engines": {
+    "node": ">=22"
+  }
 }

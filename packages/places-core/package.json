@@ -1,8 +1,8 @@
 {
   "name": "places-core",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
-  "version": "1.0.0",
   "exports": {
     "./categories": {
       "types": "./dist/constants/categories.constants.d.ts",
