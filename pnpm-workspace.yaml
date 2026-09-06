@@ -46,6 +46,7 @@ minimumReleaseAge: 30240
 
 # Exclude packages from the minimum release age policy.
 minimumReleaseAgeExclude:
+  - fast-uri@3.1.6 # CVE-2026-75931, fixed in 3.1.6 (2026-08-23T01:42:00.349Z).
 
 # Force-replace transitive versions across the dependency graph to avoid
 # supply-chain downgrades.
