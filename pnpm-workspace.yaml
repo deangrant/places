@@ -22,7 +22,7 @@ catalog:
   typescript: 7.0.2
   ultracite: 7.10.5
   vite: 8.2.1
-  vitest: 4.1.10
+  vitest: 4.1.11
 
 # Dependency install/build scripts run only when listed here. true = allow,
 # false = deny; unlisted packages fail install (strictDepBuilds).
