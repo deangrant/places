@@ -35,7 +35,7 @@ Shared DTOs, taxonomy, and OSM constants live in `places-core`.
 Runtime bar:
 
 - Node.js `>=22`
-- pnpm `11.8.0` (pinned via `packageManager`)
+- pnpm `12.5.1` (pinned via `packageManager`)
 - `places-core` and `apps/api` use **zero** third-party runtime dependencies (Node builtins + workspace `places-core` only)
 - Local development is first-class: API on `:8787`, Vite on `:5173`
 
