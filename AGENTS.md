@@ -30,7 +30,7 @@ export geometry as CSV.
 - DTO shapes live in `places-core` once; web and api must not fork them.
 - Deploy web and api together from the same revision.
 
-**Runtime:** Node.js `>=22`, pnpm `11.8.0`. Local dev: API `:8787`, Vite `:5173`.
+**Runtime:** Node.js `>=22`, pnpm `12.5.1`. Local dev: API `:8787`, Vite `:5173`.
 Build order: `places-core` → `api` → `web` (`pnpm build`).
 
 ## Instruction Precedence

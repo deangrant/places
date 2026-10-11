@@ -27,7 +27,7 @@ Deeper module maps and data flow: [`.agents/docs/ARCHITECTURE.md`](.agents/docs/
 ## Requirements
 
 - Node.js `>=22`
-- [pnpm](https://pnpm.io/) `11.8.0` (pinned via `packageManager` in root `package.json`)
+- [pnpm](https://pnpm.io/) `12.5.1` (pinned via `packageManager` in root `package.json`)
 
 ```bash
 corepack enable
