@@ -23,3 +23,10 @@ updates:
       - dependabot
       - ecosystem:npm
     open-pull-requests-limit: 25
+    groups:
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
