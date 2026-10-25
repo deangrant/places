@@ -204,11 +204,13 @@ describe("ExportGeometryModal", () => {
           "No places matched this geometry. Try a different type.",
         ),
       ).toBeInTheDocument();
+      expect(
+        screen.getByRole("dialog", { name: "Export places" }),
+      ).toBeVisible();
     });
     expect(downloadPlacesCsv).not.toHaveBeenCalled();
     expect(onExported).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
-    expect(screen.getByRole("dialog", { name: "Export places" })).toBeVisible();
   });
 
   it("cancels an in-flight export from the overlay and restores the picker", async () => {
