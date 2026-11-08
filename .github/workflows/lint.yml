@@ -67,7 +67,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Run React Doctor
-        uses: millionco/react-doctor@673ce802a375eeb4c3c5cb9a96d21eaeb7eafd93
+        uses: millionco/react-doctor@695e46eee203a5d1855020191aa7e9c010a1250e
         with:
           version: ${{ steps.react-doctor-version.outputs.version }}
           blocking: error
